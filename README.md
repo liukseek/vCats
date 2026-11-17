@@ -1,8 +1,12 @@
 <p align="center">
-  <img src="assets/logo.png" alt="vCats logo" width="220">
+  <img src="assets/logo-readme.png" alt="vCats" width="200">
 </p>
 
-# vCats
+<p align="center">
+  <strong>Screen sharing for ViewBoard / vCast receivers</strong>
+</p>
+
+---
 
 A command-line screen-sharing client written in Java for ViewBoard / vCast (EShare-compatible) receivers. It finds the receiver from its PIN or IP address, asks it to accept a screen share, and streams the desktop to it as H.264 video.
 
@@ -143,7 +147,10 @@ The control channel always uses WebSocket.
 
 ## Project structure
 
-The Java sources are under `src/main/`. The logo is stored in `assets/logo.png`.
+The Java sources are under `src/main/`. The logo files are in `assets/`:
+
+- `logo.png`: the original logo, read by the graphical interface.
+- `logo-readme.png`: the same logo cropped to its content, with rounded corners and a thin border, used at the top of this README.
 
 ```text
 src/main/
