@@ -1,4 +1,4 @@
-# vCats
+# VCats
 
 A command-line screen-sharing client written in Java for ViewBoard / vCast (EShare-compatible) receivers. It finds the receiver from its PIN or IP address, asks it to accept a screen share, and streams the desktop to it as H.264 video.
 
@@ -10,6 +10,7 @@ The project is experimental. The protocol was reconstructed from the behaviour o
 - [Requirements](#requirements)
 - [Build](#build)
 - [Usage](#usage)
+- [Graphical interface](#graphical-interface)
 - [How it works](#how-it-works)
 - [Project structure](#project-structure)
 - [Platform notes](#platform-notes)
@@ -26,11 +27,12 @@ The project is experimental. The protocol was reconstructed from the behaviour o
   - Plain TCP, as exposed by the native PC receiver.
 - Screen capture and H.264 encoding through the system `ffmpeg` on Windows, Linux and macOS.
 - Built-in test pattern source, so the connection can be verified without sharing the screen.
+- Graphical control window (Swing, no extra libraries) with light and dark themes, to configure, start and stop a share and to follow the log.
 - Handles both a user-initiated share, which the receiver must accept, and a share the receiver invites.
 
 ## Requirements
 
-- JDK 21 or later.
+- JDK 22 or later.
 - `ffmpeg` available on the system `PATH` (or passed with `--ffmpeg`). The program checks for it at startup and prints the install command for the current operating system if it is missing:
 
 | System  | Install command                |
@@ -57,6 +59,8 @@ The project can also be opened and built directly in IntelliJ IDEA. The entry po
 java -cp out main.Main <PIN|IP> [options]
 ```
 
+Running `main.Main` without arguments opens the [graphical interface](#graphical-interface) instead.
+
 Examples:
 
 ```bash
@@ -82,6 +86,35 @@ java -cp out main.Main 192.168.1.50 --test
 | `--ws`                  | automatic          | Force the WebSocket transport                                               |
 
 Press `Ctrl+C` to stop. The program sends a teardown to the receiver and stops ffmpeg before exiting.
+
+## Graphical interface
+
+Start the program without arguments to open the control window:
+
+```bash
+java -cp out main.Main
+```
+
+The window is organised in cards: Connection, Video, and a collapsible Advanced settings section. It offers the same settings as the command-line options:
+
+| Field               | Command-line equivalent | Notes                                                           |
+| ------------------- | ----------------------- | --------------------------------------------------------------- |
+| PIN or IP address   | `<PIN\|IP>`             | Required                                                        |
+| Device name         | `--name`                | Defaults to the local host name                                 |
+| Share type          | `--type`                | Manual or invited                                               |
+| Transport           | `--raw`, `--ws`         | Automatic, native TCP or WebSocket                              |
+| Resolution          | `--size`                | Presets, or type any `WIDTHxHEIGHT`                             |
+| Frame rate          | `--fps`                 | Presets, or type any value from 1 to 60                         |
+| Bitrate             | `--bitrate`             | For example `3M` or `2500k`                                     |
+| ffmpeg              | `--ffmpeg`              | Advanced settings. Path to the executable, with a file chooser  |
+| Custom ffmpeg input | `--input`               | Advanced settings. Leave empty to capture the screen            |
+| Test pattern        | `--test`                | Sends a generated pattern instead of the screen                 |
+
+**Start** validates the settings, locks the form and starts the session. Invalid values and connection errors are shown in red above the log instead of in a dialog. **Stop** ends the share and releases the receiver.
+
+The status indicator in the bottom left follows the session through these stages: looking for the board, connecting, waiting for the board to accept, sharing, stopped, or failed. The log area shows the same messages as the console. Closing the window while a share is active stops it first.
+
+The theme follows the operating system setting at startup (Windows, macOS, and GNOME on Linux; light otherwise). The button in the top right switches between light and dark.
 
 ## How it works
 
@@ -110,7 +143,18 @@ src/main/
 ├── config/
 │   └── Options.java           Command-line options
 ├── util/
-│   └── Log.java               Console logging
+│   └── Log.java               Console logging, with listeners for the GUI
+├── ui/
+│   ├── ControlWindow.java     Main window: header, Start, Stop and status
+│   ├── OptionsForm.java       Settings cards, converted to Options
+│   ├── LogPanel.java          Log display
+│   ├── theme/
+│   │   └── Theme.java         Light and dark palettes, fonts, system theme detection
+│   └── widget/                Custom Swing components
+│       ├── Card.java, ThemedPanel.java, ThemedLabel.java
+│       ├── FlatButton.java, FlatTextField.java, FlatComboBox.java
+│       ├── ToggleSwitch.java, StatusPill.java
+│       └── FlatScrollBarUI.java, ChevronIcon.java
 ├── net/
 │   ├── Channel.java           Bidirectional channel to the receiver
 │   ├── WebSocketChannel.java  WebSocket implementation
@@ -127,7 +171,9 @@ src/main/
 │   ├── AuSplitter.java        Splits the H.264 stream into access units
 │   └── H264.java              NAL unit parsing
 └── session/
-    └── CastSession.java       Ties control, cast and ffmpeg together
+    ├── CastRunner.java        Full flow for one share: check, resolve, connect, run, stop
+    ├── CastSession.java       Ties control, cast and ffmpeg together
+    └── Phase.java             Session stages reported to the interface
 ```
 
 ## Platform notes
@@ -156,8 +202,9 @@ src/main/
 - Audio is not transmitted. The audio channel is opened but unused.
 - The control channel uses plain `ws://`. There is no encryption or authentication beyond the receiver accepting the share, so use it only on networks you trust and with receivers you are authorised to use.
 - Tested on Windows against a native PC receiver. The macOS and Linux code paths have not been run.
+- The graphical interface has been compiled and its layout checked in both themes, but it has not been used for a live share yet. It does not remember settings or the chosen theme between runs.
 - The protocol is reconstructed, not documented. Other receiver versions may behave differently.
 
 ## License
 
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+No license has been chosen yet.
