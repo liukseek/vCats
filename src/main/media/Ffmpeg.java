@@ -5,6 +5,8 @@ import main.util.Log;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -13,6 +15,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class Ffmpeg {
+    private static final Path TEST_IMAGE = Path.of("assets", "test-kittens.jpg");
+
     private Ffmpeg() {
     }
 
@@ -36,15 +40,22 @@ public final class Ffmpeg {
     public static List<String> command(Options o) {
         List<String> c = new ArrayList<>(List.of(o.ffmpeg, "-hide_banner", "-loglevel", "error"));
         String os = os();
-        if (o.test)
+        String filter = "scale=" + o.width + ":" + o.height + ",format=yuv420p";
+        if (o.test && Files.isRegularFile(TEST_IMAGE)) {
+            Log.info("test source: " + TEST_IMAGE);
+            c.addAll(List.of("-re", "-loop", "1", "-framerate", "" + o.fps, "-i", TEST_IMAGE.toAbsolutePath().toString()));
+            filter = "scale=" + Math.round(o.width * 1.12) + ":" + Math.round(o.height * 1.12) + ":force_original_aspect_ratio=increase,"
+                    + "crop=" + o.width + ":" + o.height + ":x='(iw-ow)/2*(1+sin(t/2))':y='(ih-oh)*(0.1+0.15*(1-cos(t/3)))',format=yuv420p";
+        } else if (o.test) {
+            Log.info("test image " + TEST_IMAGE + " not found, using the generated pattern");
             c.addAll(List.of("-re", "-f", "lavfi", "-i", "testsrc2=size=" + o.width + "x" + o.height + ":rate=" + o.fps));
-        else if (o.input != null) c.addAll(Arrays.asList(o.input.trim().split("\\s+")));
+        } else if (o.input != null) c.addAll(Arrays.asList(o.input.trim().split("\\s+")));
         else if (os.contains("win")) c.addAll(List.of("-f", "gdigrab", "-framerate", "" + o.fps, "-i", "desktop"));
         else if (os.contains("mac"))
             c.addAll(List.of("-f", "avfoundation", "-framerate", "" + o.fps, "-capture_cursor", "1", "-i", macScreenIndex(o.ffmpeg) + ":none"));
         else
             c.addAll(List.of("-f", "x11grab", "-framerate", "" + o.fps, "-draw_mouse", "1", "-i", System.getenv().getOrDefault("DISPLAY", ":0.0")));
-        c.addAll(List.of("-vf", "scale=" + o.width + ":" + o.height + ",format=yuv420p", "-an", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-profile:v", "baseline", "-b:v", o.bitrate, "-maxrate", o.bitrate, "-bufsize", o.bitrate, "-g", "" + (o.fps * 2), "-x264-params", "aud=1:repeat-headers=1:bframes=0", "-f", "h264", "pipe:1"));
+        c.addAll(List.of("-vf", filter, "-an", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-profile:v", "baseline", "-b:v", o.bitrate, "-maxrate", o.bitrate, "-bufsize", o.bitrate, "-g", "" + (o.fps * 2), "-x264-params", "aud=1:repeat-headers=1:bframes=0", "-f", "h264", "pipe:1"));
         return c;
     }
 
