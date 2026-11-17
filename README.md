@@ -1,4 +1,4 @@
-# VCats
+# vCats
 
 A command-line screen-sharing client written in Java for ViewBoard / vCast (EShare-compatible) receivers. It finds the receiver from its PIN or IP address, asks it to accept a screen share, and streams the desktop to it as H.264 video.
 
