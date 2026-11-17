@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="vCats logo" width="220">
+</p>
+
 # vCats
 
 A command-line screen-sharing client written in Java for ViewBoard / vCast (EShare-compatible) receivers. It finds the receiver from its PIN or IP address, asks it to accept a screen share, and streams the desktop to it as H.264 video.
@@ -116,6 +120,8 @@ The status indicator in the bottom left follows the session through these stages
 
 The theme follows the operating system setting at startup (Windows, macOS, and GNOME on Linux; light otherwise). The button in the top right switches between light and dark.
 
+The header shows the project logo and the same image is used as the window and taskbar icon. The symbol is cropped automatically from `assets/logo.png`, which is read from the working directory, so start the program from the project root, or from the classpath. If the file is missing the window works without the logo.
+
 ## How it works
 
 1. **Discovery.** A PIN encodes the last three octets of the receiver's address. The first octet is guessed from the local network interfaces, and each candidate is probed on the control port. An IP address is used as given.
@@ -137,6 +143,8 @@ The control channel always uses WebSocket.
 
 ## Project structure
 
+The Java sources are under `src/main/`. The logo is stored in `assets/logo.png`.
+
 ```text
 src/main/
 ├── Main.java                  Entry point
@@ -149,11 +157,12 @@ src/main/
 │   ├── OptionsForm.java       Settings cards, converted to Options
 │   ├── LogPanel.java          Log display
 │   ├── theme/
-│   │   └── Theme.java         Light and dark palettes, fonts, system theme detection
+│   │   ├── Theme.java         Light and dark palettes, fonts, system theme detection
+│   │   └── Logo.java          Loads assets/logo.png and crops the symbol
 │   └── widget/                Custom Swing components
 │       ├── Card.java, ThemedPanel.java, ThemedLabel.java
 │       ├── FlatButton.java, FlatTextField.java, FlatComboBox.java
-│       ├── ToggleSwitch.java, StatusPill.java
+│       ├── ToggleSwitch.java, StatusPill.java, LogoMark.java
 │       └── FlatScrollBarUI.java, ChevronIcon.java
 ├── net/
 │   ├── Channel.java           Bidirectional channel to the receiver
