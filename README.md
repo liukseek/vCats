@@ -34,7 +34,7 @@ The project is experimental. The protocol was reconstructed from the behaviour o
   - WebSocket, as used by the Chrome extension.
   - Plain TCP, as exposed by the native PC receiver.
 - Screen capture and H.264 encoding through the system `ffmpeg` on Windows, Linux and macOS.
-- Built-in test pattern source, so the connection can be verified without sharing the screen.
+- Test mode that sends a slowly panning photo of kittens instead of the screen, so the connection can be verified without sharing the desktop.
 - Graphical control window (Swing, no extra libraries) with light and dark themes, to configure, start and stop a share and to follow the log.
 - Handles both a user-initiated share, which the receiver must accept, and a share the receiver invites.
 
@@ -89,7 +89,7 @@ java -cp out main.Main 192.168.1.50 --test
 | `--bitrate RATE`        | `3M`               | Video bitrate, in ffmpeg notation                                           |
 | `--ffmpeg PATH`         | `ffmpeg`           | ffmpeg executable                                                           |
 | `--input "ARGS"`        | none               | Custom ffmpeg input arguments, replacing the default screen capture         |
-| `--test`                | off                | Send a generated test pattern instead of the screen                         |
+| `--test`                | off                | Send the test image (kittens) instead of the screen                         |
 | `--raw`                 | automatic          | Force the plain TCP transport                                               |
 | `--ws`                  | automatic          | Force the WebSocket transport                                               |
 
@@ -116,7 +116,7 @@ The window is organised in cards: Connection, Video, and a collapsible Advanced 
 | Bitrate             | `--bitrate`             | For example `3M` or `2500k`                                     |
 | ffmpeg              | `--ffmpeg`              | Advanced settings. Path to the executable, with a file chooser  |
 | Custom ffmpeg input | `--input`               | Advanced settings. Leave empty to capture the screen            |
-| Test pattern        | `--test`                | Sends a generated pattern instead of the screen                 |
+| Test image          | `--test`                | Sends the kitten test image instead of the screen               |
 
 **Start** validates the settings, locks the form and starts the session. Invalid values and connection errors are shown in red above the log instead of in a dialog. **Stop** ends the share and releases the receiver.
 
@@ -151,6 +151,7 @@ The Java sources are under `src/main/`. The logo files are in `assets/`:
 
 - `logo.png`: the original logo, read by the graphical interface.
 - `logo-readme.png`: the same logo cropped to its content, with rounded corners and a thin border, used at the top of this README.
+- `test-kittens.jpg`: the image sent by the test mode (`--test`).
 
 ```text
 src/main/
@@ -210,7 +211,7 @@ src/main/
 
 **Black or empty image on Linux.** The session is probably Wayland. Use `--input` with a Wayland-capable capture command, or log in to an X11 session.
 
-**Verifying the connection.** Run with `--test`. The receiver should display a generated test pattern, which separates connection problems from screen-capture problems.
+**Verifying the connection.** Run with `--test`. The receiver should display a photo of kittens that pans slowly, which separates connection problems from screen-capture problems. The slow movement shows that the stream is live and not frozen. The image is read from `assets/test-kittens.jpg` in the working directory, so start the program from the project root; if the file is missing, a generated test pattern is sent instead.
 
 ## Limitations
 
