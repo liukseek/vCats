@@ -1,3 +1,4 @@
+
 <p align="center">
   <img src="assets/logo-readme.png" alt="vCats" width="260">
 </p>
@@ -41,57 +42,76 @@ The project is experimental. The protocol was reconstructed from the behaviour o
 ## Requirements
 
 - JDK 22 or later.
-- `ffmpeg` available on the system `PATH` (or passed with `--ffmpeg`). The program checks for it at startup and prints the install command for the current operating system if it is missing:
+- Maven 3.9 or later (required to build the project).
+- `ffmpeg` available on the system `PATH` (or passed with `--ffmpeg`). The program checks for it at startup and prints the install command for the current operating system if it is missing.
 
-| System  | Install command                |
+| System | Install command |
 | ------- | ------------------------------ |
-| Windows | `winget install Gyan.FFmpeg`   |
-| macOS   | `brew install ffmpeg`          |
-| Linux   | `sudo apt install ffmpeg`      |
+| Windows | `winget install Gyan.FFmpeg` |
+| macOS | `brew install ffmpeg` |
+| Linux | `sudo apt install ffmpeg` |
 
 - The sender and the receiver must be on the same local network.
 
 ## Build
 
-From the project root:
+The project uses Maven to compile the Java sources and package them into an executable JAR.
+
+From the project root, run:
 
 ```bash
-javac -d out -sourcepath src src/main/Main.java
+mvn clean package
 ```
 
-The project can also be opened and built directly in IntelliJ IDEA. The entry point is `main.Main`.
+The resulting JAR is generated in the `target/` directory:
+
+```text
+target/vcats-1.0.0.jar
+```
+
+To launch the application:
+
+```bash
+java -jar target/vcats-1.0.0.jar
+```
+
+The JAR does not bundle FFmpeg. It must be installed separately and available on your system `PATH`.
+
+The project can also be imported and built directly in IntelliJ IDEA. The entry point is `main.Main`.
 
 ## Usage
 
+Run the application with a receiver PIN or IP address:
+
 ```bash
-java -cp out main.Main <PIN|IP> [options]
+java -jar target/vcats-1.0.0.jar <PIN|IP> [options]
 ```
 
-Running `main.Main` without arguments opens the [graphical interface](#graphical-interface) instead.
+Running the application without arguments opens the [graphical interface](#graphical-interface) instead.
 
 Examples:
 
 ```bash
-java -cp out main.Main ABC123
-java -cp out main.Main 192.168.1.50 --size 1280x720 --fps 24
-java -cp out main.Main 192.168.1.50 --test
+java -jar target/vcats-1.0.0.jar ABC123
+java -jar target/vcats-1.0.0.jar 192.168.1.50 --size 1280x720 --fps 24
+java -jar target/vcats-1.0.0.jar 192.168.1.50 --test
 ```
 
 ### Options
 
-| Option                  | Default            | Description                                                                 |
-| ----------------------- | ------------------ | --------------------------------------------------------------------------- |
-| `<PIN\|IP>`             | required           | Receiver PIN (6 characters) or IPv4 address                                 |
-| `--name NAME`           | local host name    | Device name shown on the receiver                                           |
-| `--type manual\|invited`| `manual`           | `manual`: the receiver must accept the share. `invited`: the receiver asked |
-| `--size WxH`            | `1920x1080`        | Output resolution                                                           |
-| `--fps N`               | `30`               | Frame rate                                                                  |
-| `--bitrate RATE`        | `3M`               | Video bitrate, in ffmpeg notation                                           |
-| `--ffmpeg PATH`         | `ffmpeg`           | ffmpeg executable                                                           |
-| `--input "ARGS"`        | none               | Custom ffmpeg input arguments, replacing the default screen capture         |
-| `--test`                | off                | Send the test image (kittens) instead of the screen                         |
-| `--raw`                 | automatic          | Force the plain TCP transport                                               |
-| `--ws`                  | automatic          | Force the WebSocket transport                                               |
+| Option | Default | Description |
+| ----------------------- | ------------------ | ------------------------------------------------------------------------- |
+| `<PIN\|IP>` | required | Receiver PIN (6 characters) or IPv4 address |
+| `--name NAME` | local host name | Device name shown on the receiver |
+| `--type manual\|invited` | `manual` | `manual`: the receiver must accept the share. `invited`: the receiver asked |
+| `--size WxH` | `1920x1080` | Output resolution |
+| `--fps N` | `30` | Frame rate |
+| `--bitrate RATE` | `3M` | Video bitrate, in ffmpeg notation |
+| `--ffmpeg PATH` | `ffmpeg` | ffmpeg executable |
+| `--input "ARGS"` | none | Custom ffmpeg input arguments, replacing the default screen capture |
+| `--test` | off | Send the test image (kittens) instead of the screen |
+| `--raw` | automatic | Force the plain TCP transport |
+| `--ws` | automatic | Force the WebSocket transport |
 
 Press `Ctrl+C` to stop. The program sends a teardown to the receiver and stops ffmpeg before exiting.
 
@@ -100,23 +120,23 @@ Press `Ctrl+C` to stop. The program sends a teardown to the receiver and stops f
 Start the program without arguments to open the control window:
 
 ```bash
-java -cp out main.Main
+java -jar target/vcats-1.0.0.jar
 ```
 
 The window is organised in cards: Connection, Video, and a collapsible Advanced settings section. It offers the same settings as the command-line options:
 
-| Field               | Command-line equivalent | Notes                                                           |
+| Field | Command-line equivalent | Notes |
 | ------------------- | ----------------------- | --------------------------------------------------------------- |
-| PIN or IP address   | `<PIN\|IP>`             | Required                                                        |
-| Device name         | `--name`                | Defaults to the local host name                                 |
-| Share type          | `--type`                | Manual or invited                                               |
-| Transport           | `--raw`, `--ws`         | Automatic, native TCP or WebSocket                              |
-| Resolution          | `--size`                | Presets, or type any `WIDTHxHEIGHT`                             |
-| Frame rate          | `--fps`                 | Presets, or type any value from 1 to 60                         |
-| Bitrate             | `--bitrate`             | For example `3M` or `2500k`                                     |
-| ffmpeg              | `--ffmpeg`              | Advanced settings. Path to the executable, with a file chooser  |
-| Custom ffmpeg input | `--input`               | Advanced settings. Leave empty to capture the screen            |
-| Test image          | `--test`                | Sends the kitten test image instead of the screen               |
+| PIN or IP address | `<PIN\|IP>` | Required |
+| Device name | `--name` | Defaults to the local host name |
+| Share type | `--type` | Manual or invited |
+| Transport | `--raw`, `--ws` | Automatic, native TCP or WebSocket |
+| Resolution | `--size` | Presets, or type any `WIDTHxHEIGHT` |
+| Frame rate | `--fps` | Presets, or type any value from 1 to 60 |
+| Bitrate | `--bitrate` | For example `3M` or `2500k` |
+| ffmpeg | `--ffmpeg` | Advanced settings. Path to the executable, with a file chooser |
+| Custom ffmpeg input | `--input` | Advanced settings. Leave empty to capture the screen |
+| Test image | `--test` | Sends the kitten test image instead of the screen |
 
 **Start** validates the settings, locks the form and starts the session. Invalid values and connection errors are shown in red above the log instead of in a dialog. **Stop** ends the share and releases the receiver.
 
@@ -136,12 +156,12 @@ The header shows the project logo and the same image is used as the window and t
 
 ### Ports
 
-| Purpose        | WebSocket transport | Plain TCP transport |
+| Purpose | WebSocket transport | Plain TCP transport |
 | -------------- | ------------------- | ------------------- |
-| Control        | 57407               | 57407               |
-| RTSP           | 51042               | 51040               |
-| Video          | 51032               | 51030               |
-| Audio (opened) | 51033               | 51020               |
+| Control | 57407 | 57407 |
+| RTSP | 51042 | 51040 |
+| Video | 51032 | 51030 |
+| Audio (opened) | 51033 | 51020 |
 
 The control channel always uses WebSocket.
 
@@ -195,11 +215,11 @@ src/main/
 
 ## Platform notes
 
-| System  | Capture backend | Notes                                                                                           |
-| ------- | --------------- | ----------------------------------------------------------------------------------------------- |
-| Windows | `gdigrab`       | Restart the IDE or terminal after installing ffmpeg so the updated `PATH` is picked up          |
-| macOS   | `avfoundation`  | The terminal or IDE needs the Screen Recording permission. The screen device index is detected |
-| Linux   | `x11grab`       | Works on X11 and XWayland only. On a Wayland session use `--input` or switch to an X11 session |
+| System | Capture backend | Notes |
+| ------- | --------------- | ------------------------------------------------------------------------------------------- |
+| Windows | `gdigrab` | Restart the IDE or terminal after installing ffmpeg so the updated `PATH` is picked up |
+| macOS | `avfoundation` | The terminal or IDE needs the Screen Recording permission. The screen device index is detected |
+| Linux | `x11grab` | Works on X11 and XWayland only. On a Wayland session use `--input` or switch to an X11 session |
 
 ## Troubleshooting
 

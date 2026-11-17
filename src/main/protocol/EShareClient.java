@@ -112,8 +112,14 @@ public final class EShareClient {
     }
 
     public void close() {
-        timer.shutdownNow();
-        teardown();
-        for (Channel c : new Channel[]{rtsp, video, audio}) if (c != null) c.close();
+    decision.complete(false);
+    timer.shutdownNow();
+    teardown();
+
+    for (Channel c : new Channel[]{rtsp, video, audio}) {
+        if (c != null) {
+            c.close();
+        }
     }
+}
 }

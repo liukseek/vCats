@@ -13,7 +13,7 @@ public final class Options {
     public int width = 1920, height = 1080, fps = 30;
     public boolean test;
 
-    private Options() {
+    public Options() {
     }
 
     public static Options parse(String[] a) {
