@@ -52,7 +52,7 @@ final class OptionsForm extends JPanel {
     private final FlatComboBox<String> size = new FlatComboBox<>(new String[]{"1920x1080", "1280x720", "1024x768", "2560x1440"}, true);
     private final FlatComboBox<String> fps = new FlatComboBox<>(new String[]{"15", "24", "30", "60"}, true);
     private final FlatTextField bitrate = new FlatTextField("3M");
-    private final ToggleSwitch test = new ToggleSwitch("Send a test pattern instead of the screen");
+    private final ToggleSwitch test = new ToggleSwitch("Send the test image (kittens) instead of the screen");
     private final FlatTextField ffmpeg = new FlatTextField("ffmpeg");
     private final FlatButton browse = new FlatButton("Browse", FlatButton.Variant.GHOST);
     private final FlatTextField input = new FlatTextField("");
