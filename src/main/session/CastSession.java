@@ -78,14 +78,15 @@ public final class CastSession {
     }
 
     public void shutdown() {
-        if (ffmpeg != null) {
-            ffmpeg.destroy();
-            try {
-                if (!ffmpeg.waitFor(2, TimeUnit.SECONDS)) ffmpeg.destroyForcibly();
-            } catch (InterruptedException ignored) {
-            }
-        }
-        if (eshare != null) eshare.close();
-        if (control != null) control.close();
+    done.countDown();
+
+    if (ffmpeg != null) {
+        ffmpeg.destroy();
+        try {
+            if (!ffmpeg.waitFor(2, TimeUnit.SECONDS)) ffmpeg.destroyForcibly();
+        } catch (InterruptedException ignored) {}
     }
+    if (eshare != null) eshare.close();
+    if (control != null) control.close();
+}
 }
