@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo-readme.png" alt="vCats" width="200">
+  <img src="assets/logo-readme.png" alt="vCats" width="260">
 </p>
 
 <p align="center">
@@ -223,4 +223,4 @@ src/main/
 
 ## License
 
-No license has been chosen yet.
+This project is released under the MIT License. See the [LICENSE](LICENSE) file for the full text.
