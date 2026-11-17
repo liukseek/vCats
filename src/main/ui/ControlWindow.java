@@ -3,8 +3,10 @@ package main.ui;
 import main.config.Options;
 import main.session.CastRunner;
 import main.session.Phase;
+import main.ui.theme.Logo;
 import main.ui.theme.Theme;
 import main.ui.widget.FlatButton;
+import main.ui.widget.LogoMark;
 import main.ui.widget.StatusPill;
 import main.ui.widget.ThemedLabel;
 import main.ui.widget.ThemedPanel;
@@ -21,8 +23,10 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagLayout;
+import java.awt.Image;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.List;
 
 @SuppressWarnings("serial")
 public final class ControlWindow extends JFrame {
@@ -51,7 +55,9 @@ public final class ControlWindow extends JFrame {
     }
 
     private ControlWindow() {
-        super("VCats");
+        super("vCats");
+        List<Image> icons = Logo.windowIcons();
+        if (!icons.isEmpty()) setIconImages(icons);
         stop.setEnabled(false);
         banner.setVisible(false);
         updateThemeButton();
@@ -93,8 +99,13 @@ public final class ControlWindow extends JFrame {
         JPanel titles = new JPanel();
         titles.setOpaque(false);
         titles.setLayout(new BoxLayout(titles, BoxLayout.Y_AXIS));
-        titles.add(new ThemedLabel("VCats", ThemedLabel.Role.TEXT, 24f, Font.BOLD));
+        titles.add(new ThemedLabel("vCats", ThemedLabel.Role.TEXT, 24f, Font.BOLD));
         titles.add(new ThemedLabel("Screen sharing for ViewBoard receivers", ThemedLabel.Role.MUTED, 12f, Font.PLAIN));
+
+        JPanel brand = new JPanel(new BorderLayout(14, 0));
+        brand.setOpaque(false);
+        brand.add(new LogoMark(), BorderLayout.WEST);
+        brand.add(titles, BorderLayout.CENTER);
 
         JPanel themeHolder = new JPanel(new GridBagLayout());
         themeHolder.setOpaque(false);
@@ -102,7 +113,7 @@ public final class ControlWindow extends JFrame {
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        header.add(titles, BorderLayout.WEST);
+        header.add(brand, BorderLayout.WEST);
         header.add(themeHolder, BorderLayout.EAST);
 
         JPanel top = new JPanel(new BorderLayout(0, 16));
