@@ -1,719 +1,163 @@
 # VCats
 
-<p align="center">
-  <img src="assets/logo.png" alt="VCats Logo" width="180">
-</p>
+A command-line screen-sharing client written in Java for ViewBoard / vCast (EShare-compatible) receivers. It finds the receiver from its PIN or IP address, asks it to accept a screen share, and streams the desktop to it as H.264 video.
 
-<h3 align="center">Open-source wireless casting software.</h3>
-
-<p align="center">
-  <strong>Cast your content, not your data.</strong>
-</p>
-
-<p align="center">
-  An open-source approach to wireless screen sharing and media streaming.
-</p>
-
----
-
-## Overview
-
-**VCats** is an open-source project focused on developing a wireless casting solution that enables users to share screens and stream multimedia content between compatible devices.
-
-The project aims to provide a transparent, accessible and privacy-oriented alternative to proprietary casting ecosystems.
-
-Traditional casting solutions often rely on closed protocols, vendor-specific applications, cloud services or platform-dependent implementations. VCats aims to explore a more open approach, giving users greater control over how their devices communicate and how their content is transmitted.
-
-Our goal is straightforward:
-
-**Wireless casting should be accessible, transparent and independent of unnecessary data collection.**
-
-VCats is being developed with open-source principles at its core, prioritizing modularity, interoperability, security and ease of use.
-
-> Your devices. Your network. Your content.
-
----
+The project is experimental. The protocol was reconstructed from the behaviour of the "vCastSender" Chrome extension (v3.2.1) and from observing a receiver on a local network. It is not affiliated with or endorsed by any vendor.
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Project Philosophy](#project-philosophy)
-- [Core Objectives](#core-objectives)
 - [Features](#features)
-- [Architecture](#architecture)
-- [Communication Model](#communication-model)
-- [Security](#security)
-- [Privacy](#privacy)
-- [Technology Stack](#technology-stack)
-- [Supported Platforms](#supported-platforms)
-- [Getting Started](#getting-started)
-- [Configuration](#configuration)
-- [Development](#development)
-- [Project Structure](#project-structure)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [Reporting Issues](#reporting-issues)
-- [FAQ](#faq)
+- [Requirements](#requirements)
+- [Build](#build)
+- [Usage](#usage)
+- [How it works](#how-it-works)
+- [Project structure](#project-structure)
+- [Platform notes](#platform-notes)
+- [Troubleshooting](#troubleshooting)
+- [Limitations](#limitations)
 - [License](#license)
-- [Acknowledgements](#acknowledgements)
-
----
-
-## Project Philosophy
-
-VCats is built around a few fundamental principles.
-
-### 1. Open Source First
-
-The source code should remain publicly accessible and inspectable.
-
-Users and developers should be able to understand how the software works, contribute improvements and independently review its implementation.
-
-### 2. Privacy by Design
-
-Casting content should not require unnecessary data collection.
-
-VCats aims to minimize external dependencies and avoid unnecessary communication with third-party services.
-
-### 3. Local Network First
-
-Whenever technically possible, device discovery and communication should happen directly over the local network.
-
-A cloud service should not be a mandatory component for basic local casting functionality.
-
-### 4. User Control
-
-Users should remain in control of their devices, connections and transmitted content.
-
-Device discovery, connection authorization and session management should be transparent.
-
-### 5. Simplicity
-
-The complexity of the underlying technology should not become the user's problem.
-
-The intended experience is simple: discover a compatible device, establish a connection and start casting.
-
----
-
-## Core Objectives
-
-| Objective        | Description                                                |
-| ---------------- | ---------------------------------------------------------- |
-| Wireless casting | Transmit screen content without physical video connections |
-| Media streaming  | Support multimedia transmission between compatible devices |
-| Device discovery | Identify available receivers on the local network          |
-| Privacy          | Minimize unnecessary data collection                       |
-| Security         | Protect communication and connection sessions              |
-| Interoperability | Support multiple operating systems and devices             |
-| Modularity       | Maintain independent and reusable software components      |
-| Accessibility    | Provide a straightforward user experience                  |
-
----
 
 ## Features
 
-The following list describes the project's development targets.
+- Resolves the receiver from a 6-character PIN or connects directly to an IP address.
+- Control channel with device presentation, receiver properties and heartbeat.
+- Two cast transports, chosen automatically or forced from the command line:
+  - WebSocket, as used by the Chrome extension.
+  - Plain TCP, as exposed by the native PC receiver.
+- Screen capture and H.264 encoding through the system `ffmpeg` on Windows, Linux and macOS.
+- Built-in test pattern source, so the connection can be verified without sharing the screen.
+- Handles both a user-initiated share, which the receiver must accept, and a share the receiver invites.
 
-Implementation status will be updated as development progresses.
+## Requirements
 
-### Device Discovery
+- JDK 21 or later.
+- `ffmpeg` available on the system `PATH` (or passed with `--ffmpeg`). The program checks for it at startup and prints the install command for the current operating system if it is missing:
 
-- [ ] Automatic discovery of compatible devices.
-- [ ] Local network device enumeration.
-- [ ] Receiver identification.
-- [ ] Device availability monitoring.
-- [ ] Manual connection by IP address or hostname.
-- [ ] Device naming and identification.
+| System  | Install command                |
+| ------- | ------------------------------ |
+| Windows | `winget install Gyan.FFmpeg`   |
+| macOS   | `brew install ffmpeg`          |
+| Linux   | `sudo apt install ffmpeg`      |
 
-### Wireless Screen Casting
+- The sender and the receiver must be on the same local network.
 
-- [ ] Desktop screen capture.
-- [ ] Screen transmission over the local network.
-- [ ] Configurable resolution.
-- [ ] Configurable frame rate.
-- [ ] Streaming quality configuration.
-- [ ] Session management.
-- [ ] Connection status monitoring.
+## Build
 
-### Multimedia Streaming
+From the project root:
 
-- [ ] Video streaming.
-- [ ] Audio streaming.
-- [ ] Audio/video synchronization.
-- [ ] Media format compatibility.
-- [ ] Streaming quality adaptation.
-
-### Connection Management
-
-- [ ] Receiver discovery.
-- [ ] Connection establishment.
-- [ ] Connection authorization.
-- [ ] Session termination.
-- [ ] Connection recovery.
-- [ ] Multiple device handling.
-
-### User Interface
-
-- [ ] Device selection interface.
-- [ ] Casting session controls.
-- [ ] Connection status.
-- [ ] Configuration panel.
-- [ ] Error reporting.
-- [ ] Cross-platform interface.
-
-### Security and Privacy
-
-- [ ] Secure communication channels.
-- [ ] Receiver authentication.
-- [ ] Connection authorization.
-- [ ] Session isolation.
-- [ ] Minimal data collection.
-- [ ] Security documentation.
-
----
-
-## Architecture
-
-VCats is intended to follow a modular architecture.
-
-Each component will have a clearly defined responsibility, allowing individual subsystems to evolve independently.
-
-The proposed logical architecture consists of the following components.
-
-### 1. Discovery Layer
-
-Responsible for identifying compatible devices available on the network.
-
-Responsibilities:
-
-- Discover available receivers.
-- Identify device capabilities.
-- Maintain a list of available devices.
-- Detect devices becoming unavailable.
-- Provide discovery information to the connection manager.
-
-### 2. Connection Layer
-
-Responsible for establishing and maintaining communication between devices.
-
-Responsibilities:
-
-- Manage connection requests.
-- Handle connection authorization.
-- Establish communication sessions.
-- Monitor connection state.
-- Handle disconnections and reconnections.
-
-### 3. Streaming Layer
-
-Responsible for transmitting multimedia content.
-
-Responsibilities:
-
-- Capture screen content.
-- Process audio and video streams.
-- Handle encoding and decoding.
-- Manage transmission.
-- Synchronize audio and video.
-- Handle streaming quality parameters.
-
-### 4. Receiver Layer
-
-Responsible for receiving and rendering transmitted content.
-
-Responsibilities:
-
-- Accept authorized connections.
-- Receive incoming streams.
-- Decode multimedia content.
-- Render video and audio.
-- Report receiver status.
-
-### 5. User Interface Layer
-
-Provides the interaction between users and the underlying system.
-
-Responsibilities:
-
-- Display available devices.
-- Manage casting sessions.
-- Expose configuration options.
-- Display connection status.
-- Report errors and warnings.
-
-### 6. Security Layer
-
-Provides security mechanisms across the communication architecture.
-
-Responsibilities:
-
-- Authenticate devices.
-- Authorize connections.
-- Protect communication channels.
-- Validate incoming requests.
-- Manage session security.
-
-### Architecture Overview
-
-```text
-                 VCATS ECOSYSTEM
-
-+--------------------------------------+
-|              SENDER                  |
-|                                      |
-|  +-------------+  +---------------+  |
-|  | Screen      |  | Audio Capture |  |
-|  | Capture     |  |               |  |
-|  +------+------+  +-------+-------+  |
-|         |                 |          |
-|         +--------+--------+          |
-|                  |                   |
-|          +-------v--------+          |
-|          | Streaming      |          |
-|          | Engine         |          |
-|          +-------+--------+          |
-|                  |                   |
-|          +-------v--------+          |
-|          | Connection     |          |
-|          | Manager        |          |
-|          +-------+--------+          |
-+------------------|-------------------+
-                   |
-             Local Network
-                   |
-+------------------|-------------------+
-|          +-------v--------+          |
-|          | Receiver       |          |
-|          | Connection     |          |
-|          +-------+--------+          |
-|                  |                   |
-|          +-------v--------+          |
-|          | Decoder        |          |
-|          | Engine         |          |
-|          +-------+--------+          |
-|                  |                   |
-|          +-------v--------+          |
-|          | Audio / Video  |          |
-|          | Rendering      |          |
-|          +----------------+          |
-|                                      |
-|              RECEIVER                |
-+--------------------------------------+
+```bash
+javac -d out -sourcepath src src/main/Main.java
 ```
 
-*This diagram represents the intended logical architecture, not a finalized implementation.*
+The project can also be opened and built directly in IntelliJ IDEA. The entry point is `main.Main`.
 
----
+## Usage
 
-## Communication Model
-
-VCats aims to support direct communication between compatible devices.
-
-The communication model is expected to involve the following stages:
-
-1. **Discovery** – The sender identifies available receivers.
-2. **Selection** – The user selects the destination device.
-3. **Authorization** – The receiver validates the connection request.
-4. **Establishment** – A communication session is created.
-5. **Transmission** – Audio, video or screen content is transmitted.
-6. **Termination** – The session is closed and associated resources are released.
-
-### Network Considerations
-
-The implementation will evaluate suitable technologies for:
-
-- Local network discovery.
-- Device identification.
-- Connection establishment.
-- Multimedia transport.
-- Audio/video synchronization.
-- Session management.
-
-The final communication protocols and transport mechanisms are still subject to technical evaluation.
-
----
-
-## Security
-
-Security is a fundamental consideration in the design of VCats.
-
-Wireless casting involves transmitting potentially sensitive information across a network. For this reason, the project aims to implement appropriate protection mechanisms.
-
-### Security Objectives
-
-- Prevent unauthorized receivers from accessing casting sessions.
-- Ensure that connection requests are explicitly authorized.
-- Protect transmitted content against unauthorized access.
-- Validate incoming communication.
-- Minimize unnecessary exposure of network services.
-- Properly manage session termination.
-
-### Security Principles
-
-**Authentication**
-
-Devices should be able to establish the identity of the communicating endpoint.
-
-**Authorization**
-
-A discovered device should not automatically receive permission to access a casting session.
-
-**Confidentiality**
-
-Communication channels should use appropriate encryption mechanisms.
-
-**Integrity**
-
-The implementation should protect transmitted data against unauthorized modification.
-
-**Least Privilege**
-
-Components should only receive the permissions required for their operation.
-
-Security mechanisms and protocols will be documented as they are implemented.
-
----
-
-## Privacy
-
-Privacy is one of the main reasons behind the creation of VCats.
-
-The project aims to avoid unnecessary dependencies on external platforms and services.
-
-### Privacy Objectives
-
-- Prefer local network communication.
-- Minimize personal data collection.
-- Avoid unnecessary telemetry.
-- Avoid unnecessary cloud dependencies.
-- Keep connection management transparent.
-- Provide visibility into active casting sessions.
-
-### Data Collection
-
-VCats aims to avoid collecting personal information that is not necessary for its operation.
-
-Any data processing required by the software should be documented and justified.
-
-### A Simple Principle
-
-Your screen is meant to be transmitted to your receiver.
-
-Not to an advertising network, an analytics platform or an unnecessarily curious server.
-
----
-
-## Technology Stack
-
-The final technology stack is currently under evaluation.
-
-The project will prioritize technologies that provide:
-
-- Cross-platform compatibility.
-- Efficient multimedia processing.
-- Reliable network communication.
-- Maintainability.
-- Security.
-- Open-source licensing.
-- Active ecosystem support.
-
-| Component              | Technology | Status           |
-| ---------------------- | ---------- | ---------------- |
-| Core engine            | TBD        | Under evaluation |
-| Network discovery      | TBD        | Under evaluation |
-| Communication protocol | TBD        | Under evaluation |
-| Video encoding         | TBD        | Under evaluation |
-| Audio processing       | TBD        | Under evaluation |
-| User interface         | TBD        | Under evaluation |
-| Build system           | TBD        | Under evaluation |
-| Testing                | TBD        | Under evaluation |
-
-Technology choices will be documented as the architecture becomes more concrete.
-
----
-
-## Supported Platforms
-
-Cross-platform compatibility is a development objective.
-
-| Platform  | Status           |
-| --------- | ---------------- |
-| Windows   | Planned          |
-| Linux     | Planned          |
-| macOS     | Planned          |
-| Android   | Under evaluation |
-| iOS       | Under evaluation |
-| Smart TVs | Under evaluation |
-
-Platform support depends on operating system APIs, multimedia capabilities and available hardware.
-
-No platform should be considered officially supported until it has been tested.
-
----
-
-## Getting Started
-
-VCats is currently under development.
-
-Installation instructions and executable releases will be provided when the first usable version becomes available.
-
-### Prerequisites
-
-Requirements will depend on the selected technology stack and target platform.
-
-### Installation
-
-Installation procedures are not yet finalized.
-
-### Running VCats
-
-Execution instructions will be added once the initial application architecture and build process are established.
-
----
-
-## Configuration
-
-The configuration system is expected to provide control over the main casting parameters.
-
-Potential configuration options include:
-
-| Parameter         | Description                       |
-| ----------------- | --------------------------------- |
-| Device name       | Local device identification       |
-| Discovery         | Device discovery settings         |
-| Network interface | Preferred network interface       |
-| Resolution        | Output resolution                 |
-| Frame rate        | Streaming frame rate              |
-| Audio             | Audio transmission settings       |
-| Security          | Connection authorization settings |
-
-Configuration options will be documented as they become available.
-
----
-
-## Development
-
-VCats welcomes developers interested in networking, multimedia processing, application development and cybersecurity.
-
-Development will focus on creating a maintainable and modular codebase.
-
-### Development Priorities
-
-1. Define the system architecture.
-2. Evaluate network communication technologies.
-3. Implement device discovery.
-4. Establish sender/receiver communication.
-5. Develop the streaming engine.
-6. Implement connection security.
-7. Build the user interface.
-8. Perform compatibility and performance testing.
-
-### Code Quality
-
-The project aims to maintain:
-
-- Readable and maintainable code.
-- Consistent coding conventions.
-- Modular components.
-- Meaningful commit messages.
-- Documented interfaces.
-- Reproducible builds.
-- Automated testing where applicable.
-
----
-
-## Project Structure
-
-The repository structure will evolve with the implementation.
-
-The proposed organization is:
-
-```text
-VCats/
-│
-├── assets/
-│   └── logo.png
-│
-├── docs/
-│   ├── architecture.md
-│   ├── protocols.md
-│   ├── security.md
-│   └── development.md
-│
-├── src/
-│   ├── core/
-│   ├── discovery/
-│   ├── connection/
-│   ├── streaming/
-│   ├── receiver/
-│   ├── security/
-│   └── interface/
-│
-├── tests/
-│
-├── examples/
-│
-├── .gitignore
-├── LICENSE
-└── README.md
+```bash
+java -cp out main.Main <PIN|IP> [options]
 ```
 
-*This is a proposed structure. Directories will be created when the corresponding components are implemented.*
+Examples:
 
----
+```bash
+java -cp out main.Main ABC123
+java -cp out main.Main 192.168.1.50 --size 1280x720 --fps 24
+java -cp out main.Main 192.168.1.50 --test
+```
 
-## Roadmap
+### Options
 
-VCats follows an incremental development approach.
+| Option                  | Default            | Description                                                                 |
+| ----------------------- | ------------------ | --------------------------------------------------------------------------- |
+| `<PIN\|IP>`             | required           | Receiver PIN (6 characters) or IPv4 address                                 |
+| `--name NAME`           | local host name    | Device name shown on the receiver                                           |
+| `--type manual\|invited`| `manual`           | `manual`: the receiver must accept the share. `invited`: the receiver asked |
+| `--size WxH`            | `1920x1080`        | Output resolution                                                           |
+| `--fps N`               | `30`               | Frame rate                                                                  |
+| `--bitrate RATE`        | `3M`               | Video bitrate, in ffmpeg notation                                           |
+| `--ffmpeg PATH`         | `ffmpeg`           | ffmpeg executable                                                           |
+| `--input "ARGS"`        | none               | Custom ffmpeg input arguments, replacing the default screen capture         |
+| `--test`                | off                | Send a generated test pattern instead of the screen                         |
+| `--raw`                 | automatic          | Force the plain TCP transport                                               |
+| `--ws`                  | automatic          | Force the WebSocket transport                                               |
 
-The roadmap is divided into development milestones.
+Press `Ctrl+C` to stop. The program sends a teardown to the receiver and stops ffmpeg before exiting.
 
-### Phase 1 — Foundation
+## How it works
 
-- [ ] Define project architecture.
-- [ ] Select the technology stack.
-- [ ] Define communication requirements.
-- [ ] Establish repository conventions.
-- [ ] Prepare development documentation.
+1. **Discovery.** A PIN encodes the last three octets of the receiver's address. The first octet is guessed from the local network interfaces, and each candidate is probed on the control port. An IP address is used as given.
+2. **Control channel.** A WebSocket on port 57407 carries line-based text messages: the client introduces itself, requests the receiver properties, and sends a heartbeat every 3 seconds. The receiver reports events such as `startMirror`, `stopMirror` and `disconnect`.
+3. **Transport selection.** If the WebSocket RTSP port is closed and the native TCP port is open, the plain TCP transport is used. Otherwise the WebSocket transport is used.
+4. **Cast channel.** An RTSP-like exchange (`OPTIONS` every second as keep-alive, `SETUP` to start, `TEARDOWN` to end) negotiates the session. With the WebSocket transport the receiver answers with an explicit allowed or refused header. With the native TCP transport the reply to `SETUP` carries the data port and counts as acceptance.
+5. **Video.** ffmpeg captures the screen and encodes H.264 with access unit delimiters. The program splits the stream into access units, sends the SPS/PPS configuration first, then each frame preceded by a 128-byte header carrying the payload length, type and timestamp.
 
-### Phase 2 — Network Communication
+### Ports
 
-- [ ] Implement device discovery.
-- [ ] Implement device identification.
-- [ ] Establish sender/receiver communication.
-- [ ] Implement connection management.
-- [ ] Test local network communication.
+| Purpose        | WebSocket transport | Plain TCP transport |
+| -------------- | ------------------- | ------------------- |
+| Control        | 57407               | 57407               |
+| RTSP           | 51042               | 51040               |
+| Video          | 51032               | 51030               |
+| Audio (opened) | 51033               | 51020               |
 
-### Phase 3 — Streaming Engine
+The control channel always uses WebSocket.
 
-- [ ] Implement screen capture.
-- [ ] Implement video encoding.
-- [ ] Implement video transmission.
-- [ ] Implement receiver decoding.
-- [ ] Evaluate audio transmission.
-- [ ] Optimize latency and performance.
+## Project structure
 
-### Phase 4 — Security and Privacy
+```text
+src/main/
+├── Main.java                  Entry point
+├── config/
+│   └── Options.java           Command-line options
+├── util/
+│   └── Log.java               Console logging
+├── net/
+│   ├── Channel.java           Bidirectional channel to the receiver
+│   ├── WebSocketChannel.java  WebSocket implementation
+│   ├── TcpChannel.java        Plain TCP implementation
+│   └── Transport.java         Transport kinds, ports and automatic selection
+├── protocol/
+│   ├── Protocol.java          Protocol constants and stream descriptor
+│   ├── PinResolver.java       PIN or IP to a reachable receiver address
+│   ├── ControlClient.java     Control channel and heartbeat
+│   └── EShareClient.java      RTSP-like cast channel and video framing
+├── media/
+│   ├── Ffmpeg.java            ffmpeg check and command line per operating system
+│   ├── VideoPump.java         Reads ffmpeg output and sends frames to the receiver
+│   ├── AuSplitter.java        Splits the H.264 stream into access units
+│   └── H264.java              NAL unit parsing
+└── session/
+    └── CastSession.java       Ties control, cast and ffmpeg together
+```
 
-- [ ] Implement receiver authentication.
-- [ ] Implement connection authorization.
-- [ ] Protect communication channels.
-- [ ] Review data collection.
-- [ ] Perform security testing.
+## Platform notes
 
-### Phase 5 — User Experience
+| System  | Capture backend | Notes                                                                                           |
+| ------- | --------------- | ----------------------------------------------------------------------------------------------- |
+| Windows | `gdigrab`       | Restart the IDE or terminal after installing ffmpeg so the updated `PATH` is picked up          |
+| macOS   | `avfoundation`  | The terminal or IDE needs the Screen Recording permission. The screen device index is detected |
+| Linux   | `x11grab`       | Works on X11 and XWayland only. On a Wayland session use `--input` or switch to an X11 session |
 
-- [ ] Develop the graphical interface.
-- [ ] Implement device selection.
-- [ ] Implement session controls.
-- [ ] Add configuration options.
-- [ ] Improve error handling.
+## Troubleshooting
 
-### Phase 6 — Release
+**`Connection refused` when the cast starts.** The control port answered but the cast ports did not. The receiver may use the other transport, so try `--raw` or `--ws`. If neither works, check that screen sharing is enabled on the receiver.
 
-- [ ] Complete integration testing.
-- [ ] Perform cross-platform testing.
-- [ ] Prepare installation documentation.
-- [ ] Publish the first public release.
-- [ ] Establish a stable release process.
+**`ffmpeg is not executable`.** Install ffmpeg or pass its location with `--ffmpeg`. On Windows, restart the IDE after installing so it sees the new `PATH`.
 
----
+**The share is never accepted.** With `--type manual` the receiver has to accept the request, and the program waits up to 60 seconds for the answer.
 
-## Contributing
+**Black or empty image on Linux.** The session is probably Wayland. Use `--input` with a Wayland-capable capture command, or log in to an X11 session.
 
-Contributions are welcome.
+**Verifying the connection.** Run with `--test`. The receiver should display a generated test pattern, which separates connection problems from screen-capture problems.
 
-Whether you are interested in networking, multimedia, security, interface development or documentation, there are several ways to participate.
+## Limitations
 
-### How to Contribute
-
-1. Fork the repository.
-2. Create a dedicated branch.
-3. Implement your changes.
-4. Test your implementation.
-5. Commit your changes.
-6. Open a Pull Request.
-
-### Contribution Guidelines
-
-Please ensure that contributions:
-
-- Follow the existing project structure.
-- Include appropriate documentation.
-- Do not introduce unnecessary dependencies.
-- Respect privacy and security principles.
-- Include tests where applicable.
-- Clearly describe their purpose.
-
-### Issues and Feature Requests
-
-Before opening a new issue, check whether a similar report already exists.
-
-When reporting a bug, include:
-
-- Operating system and version.
-- Relevant hardware information.
-- Steps to reproduce the issue.
-- Expected behavior.
-- Actual behavior.
-- Relevant logs or error messages.
-
----
-
-## FAQ
-
-### What is VCats?
-
-VCats is an open-source project focused on wireless casting and multimedia transmission between compatible devices.
-
-### Is VCats open source?
-
-Yes. The project is being developed as open-source software. The exact license will be specified before the first public release.
-
-### Does VCats require an internet connection?
-
-The project aims to support local network communication without requiring cloud connectivity for basic casting functionality.
-
-The exact requirements will depend on the final implementation.
-
-### Does VCats collect user data?
-
-Privacy is a core design objective. The project aims to minimize data collection and avoid unnecessary telemetry.
-
-Actual data handling will be documented as the software is implemented.
-
-### Is VCats compatible with every device?
-
-Not currently. Cross-platform compatibility is a development objective, and support will depend on the available operating system and hardware capabilities.
-
-### Is VCats an alternative to proprietary casting solutions?
-
-That is the long-term objective: to provide an open, transparent and privacy-oriented alternative.
-
----
+- Only the sender side is implemented. There is no receiver.
+- Audio is not transmitted. The audio channel is opened but unused.
+- The control channel uses plain `ws://`. There is no encryption or authentication beyond the receiver accepting the share, so use it only on networks you trust and with receivers you are authorised to use.
+- Tested on Windows against a native PC receiver. The macOS and Linux code paths have not been run.
+- The protocol is reconstructed, not documented. Other receiver versions may behave differently.
 
 ## License
 
-The project license is currently **TBD**.
-
-A license will be selected and added before the first public release.
-
-Until then, no assumptions should be made about redistribution, modification or commercial use of the source code.
-
----
-
-## Acknowledgements
-
-VCats is built on the work of the open-source community.
-
-We recognize the developers and maintainers of the libraries, tools and technologies that make open-source software possible.
-
----
-
-## VCats
-
-**Open-source wireless casting software**
-
-*Cast your content, not your data.*
-
-Made with curiosity and a healthy distrust of unnecessary telemetry. 🐱
+No license has been chosen yet.
