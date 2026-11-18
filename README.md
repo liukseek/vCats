@@ -1,4 +1,3 @@
-
 <p align="center">
   <img src="assets/logo-readme.png" alt="vCats" width="260">
 </p>
@@ -9,9 +8,9 @@
 
 ---
 
-A command-line screen-sharing client written in Java for ViewBoard / vCast (EShare-compatible) receivers. It finds the receiver from its PIN or IP address, asks it to accept a screen share, and streams the desktop to it as H.264 video.
+vCats is a command-line screen-sharing client written in Java for ViewBoard / vCast (EShare-compatible) receivers. It finds the receiver from its PIN or IP address, asks it to accept a screen share and streams the desktop to it as H.264 video. It can be used from the command line or through a small graphical window.
 
-The project is experimental. The protocol was reconstructed from the behaviour of the "vCastSender" Chrome extension (v3.2.1) and from observing a receiver on a local network. It is not affiliated with or endorsed by any vendor.
+> **Experimental.** The protocol was reconstructed from the behaviour of the "vCastSender" Chrome extension (v3.2.1) and from observing a receiver on a local network. This project is not affiliated with or endorsed by any vendor.
 
 ## Table of Contents
 
@@ -29,35 +28,34 @@ The project is experimental. The protocol was reconstructed from the behaviour o
 
 ## Features
 
-- Resolves the receiver from a 6-character PIN or connects directly to an IP address.
+- Finds the receiver from a 6-character PIN, or connects directly to an IP address.
 - Control channel with device presentation, receiver properties and heartbeat.
 - Two cast transports, chosen automatically or forced from the command line:
-  - WebSocket, as used by the Chrome extension.
-  - Plain TCP, as exposed by the native PC receiver.
+  - **WebSocket**, as used by the Chrome extension;
+  - **plain TCP**, as exposed by the native PC receiver.
 - Screen capture and H.264 encoding through the system `ffmpeg` on Windows, Linux and macOS.
-- Test mode that sends a slowly panning photo of kittens instead of the screen, so the connection can be verified without sharing the desktop.
+- Supports both a share started by the user (the receiver must accept it) and a share invited by the receiver.
+- Test mode that sends a slowly panning photo of kittens instead of the screen, to check the connection without sharing the desktop.
 - Graphical control window (Swing, no extra libraries) with light and dark themes, to configure, start and stop a share and to follow the log.
-- Handles both a user-initiated share, which the receiver must accept, and a share the receiver invites.
 
 ## Requirements
 
-- JDK 22 or later.
-- Maven 3.9 or later (required to build the project).
-- `ffmpeg` available on the system `PATH` (or passed with `--ffmpeg`). The program checks for it at startup and prints the install command for the current operating system if it is missing.
+- **JDK 22** or later
+- **Maven 3.9** or later (required to build the project)
+- **ffmpeg** on the system `PATH`, or passed with `--ffmpeg`
+- The sender and the receiver on the **same local network**
 
-| System | Install command |
-| ------- | ------------------------------ |
+The program checks for ffmpeg at startup and, if it is missing, prints the install command for your system:
+
+| System  | Install command              |
+| ------- | ---------------------------- |
 | Windows | `winget install Gyan.FFmpeg` |
-| macOS | `brew install ffmpeg` |
-| Linux | `sudo apt install ffmpeg` |
-
-- The sender and the receiver must be on the same local network.
+| macOS   | `brew install ffmpeg`        |
+| Linux   | `sudo apt install ffmpeg`    |
 
 ## Build
 
-The project uses Maven to compile the Java sources and package them into an executable JAR.
-
-From the project root, run:
+The project uses Maven to compile the Java sources and package them into an executable JAR. From the project root, run:
 
 ```bash
 mvn clean package
@@ -75,7 +73,7 @@ To launch the application:
 java -jar target/vcats-1.0.0.jar
 ```
 
-The JAR does not bundle FFmpeg. It must be installed separately and available on your system `PATH`.
+The JAR does not bundle ffmpeg: it must be installed separately and available on your system `PATH`.
 
 The project can also be imported and built directly in IntelliJ IDEA. The entry point is `main.Main`.
 
@@ -87,7 +85,7 @@ Run the application with a receiver PIN or IP address:
 java -jar target/vcats-1.0.0.jar <PIN|IP> [options]
 ```
 
-Running the application without arguments opens the [graphical interface](#graphical-interface) instead.
+Without arguments the program opens the [graphical interface](#graphical-interface).
 
 Examples:
 
@@ -97,23 +95,23 @@ java -jar target/vcats-1.0.0.jar 192.168.1.50 --size 1280x720 --fps 24
 java -jar target/vcats-1.0.0.jar 192.168.1.50 --test
 ```
 
+Press `Ctrl+C` to stop. The program sends a teardown to the receiver and stops ffmpeg before exiting.
+
 ### Options
 
-| Option | Default | Description |
-| ----------------------- | ------------------ | ------------------------------------------------------------------------- |
-| `<PIN\|IP>` | required | Receiver PIN (6 characters) or IPv4 address |
-| `--name NAME` | local host name | Device name shown on the receiver |
-| `--type manual\|invited` | `manual` | `manual`: the receiver must accept the share. `invited`: the receiver asked |
-| `--size WxH` | `1920x1080` | Output resolution |
-| `--fps N` | `30` | Frame rate |
-| `--bitrate RATE` | `3M` | Video bitrate, in ffmpeg notation |
-| `--ffmpeg PATH` | `ffmpeg` | ffmpeg executable |
-| `--input "ARGS"` | none | Custom ffmpeg input arguments, replacing the default screen capture |
-| `--test` | off | Send the test image (kittens) instead of the screen |
-| `--raw` | automatic | Force the plain TCP transport |
-| `--ws` | automatic | Force the WebSocket transport |
-
-Press `Ctrl+C` to stop. The program sends a teardown to the receiver and stops ffmpeg before exiting.
+| Option                   | Default         | Description                                                                  |
+| ------------------------ | --------------- | ---------------------------------------------------------------------------- |
+| `<PIN\|IP>`              | required        | Receiver PIN (6 characters) or IPv4 address                                  |
+| `--name NAME`            | local host name | Device name shown on the receiver                                            |
+| `--type manual\|invited` | `manual`        | `manual`: the receiver must accept the share. `invited`: the receiver asked for it |
+| `--size WxH`             | `1920x1080`     | Output resolution                                                            |
+| `--fps N`                | `30`            | Frame rate                                                                   |
+| `--bitrate RATE`         | `3M`            | Video bitrate, in ffmpeg notation                                            |
+| `--ffmpeg PATH`          | `ffmpeg`        | ffmpeg executable                                                            |
+| `--input "ARGS"`         | none            | Custom ffmpeg input arguments, replacing the default screen capture          |
+| `--test`                 | off             | Send the kitten test image instead of the screen                             |
+| `--raw`                  | automatic       | Force the plain TCP transport                                                |
+| `--ws`                   | automatic       | Force the WebSocket transport                                                |
 
 ## Graphical interface
 
@@ -123,57 +121,57 @@ Start the program without arguments to open the control window:
 java -jar target/vcats-1.0.0.jar
 ```
 
-The window is organised in cards: Connection, Video, and a collapsible Advanced settings section. It offers the same settings as the command-line options:
+The window is organised in cards (Connection, Video and a collapsible Advanced settings section) and offers the same settings as the command line:
 
-| Field | Command-line equivalent | Notes |
-| ------------------- | ----------------------- | --------------------------------------------------------------- |
-| PIN or IP address | `<PIN\|IP>` | Required |
-| Device name | `--name` | Defaults to the local host name |
-| Share type | `--type` | Manual or invited |
-| Transport | `--raw`, `--ws` | Automatic, native TCP or WebSocket |
-| Resolution | `--size` | Presets, or type any `WIDTHxHEIGHT` |
-| Frame rate | `--fps` | Presets, or type any value from 1 to 60 |
-| Bitrate | `--bitrate` | For example `3M` or `2500k` |
-| ffmpeg | `--ffmpeg` | Advanced settings. Path to the executable, with a file chooser |
-| Custom ffmpeg input | `--input` | Advanced settings. Leave empty to capture the screen |
-| Test image | `--test` | Sends the kitten test image instead of the screen |
+| Field               | Option          | Notes                                                |
+| ------------------- | --------------- | ---------------------------------------------------- |
+| PIN or IP address   | `<PIN\|IP>`     | Required                                             |
+| Device name         | `--name`        | Defaults to the local host name                      |
+| Share type          | `--type`        | Manual or invited                                    |
+| Transport           | `--raw`, `--ws` | Automatic, native TCP or WebSocket                   |
+| Resolution          | `--size`        | Presets, or any `WIDTHxHEIGHT`                       |
+| Frame rate          | `--fps`         | Presets, or any value from 1 to 60                   |
+| Bitrate             | `--bitrate`     | For example `3M` or `2500k`                          |
+| ffmpeg              | `--ffmpeg`      | Advanced settings. Path to the executable, with a file chooser |
+| Custom ffmpeg input | `--input`       | Advanced settings. Leave empty to capture the screen |
+| Test image          | `--test`        | Sends the kitten image instead of the screen         |
 
-**Start** validates the settings, locks the form and starts the session. Invalid values and connection errors are shown in red above the log instead of in a dialog. **Stop** ends the share and releases the receiver.
-
-The status indicator in the bottom left follows the session through these stages: looking for the board, connecting, waiting for the board to accept, sharing, stopped, or failed. The log area shows the same messages as the console. Closing the window while a share is active stops it first.
-
-The theme follows the operating system setting at startup (Windows, macOS, and GNOME on Linux; light otherwise). The button in the top right switches between light and dark.
-
-The header shows the project logo and the same image is used as the window and taskbar icon. The symbol is cropped automatically from `assets/logo.png`, which is read from the working directory, so start the program from the project root, or from the classpath. If the file is missing the window works without the logo.
+- **Start** validates the settings, locks the form and starts the session. Invalid values and connection errors are shown in red above the log, not in a dialog.
+- **Stop** ends the share and releases the receiver. Closing the window during a share stops it first.
+- The **status indicator** (bottom left) shows the current stage: looking for the board, connecting, waiting for the board to accept, sharing, stopped or failed.
+- The **log area** shows the same messages as the console.
+- The **theme** follows the system setting at startup (Windows, macOS and GNOME on Linux; light otherwise). The button in the top right switches between light and dark.
+- The **logo** in the header, also used as window and taskbar icon, is cropped automatically from `assets/logo.png`, read from the working directory or the classpath, so start the program from the project root. If the file is missing, the window works without the logo.
 
 ## How it works
 
-1. **Discovery.** A PIN encodes the last three octets of the receiver's address. The first octet is guessed from the local network interfaces, and each candidate is probed on the control port. An IP address is used as given.
-2. **Control channel.** A WebSocket on port 57407 carries line-based text messages: the client introduces itself, requests the receiver properties, and sends a heartbeat every 3 seconds. The receiver reports events such as `startMirror`, `stopMirror` and `disconnect`.
-3. **Transport selection.** If the WebSocket RTSP port is closed and the native TCP port is open, the plain TCP transport is used. Otherwise the WebSocket transport is used.
-4. **Cast channel.** An RTSP-like exchange (`OPTIONS` every second as keep-alive, `SETUP` to start, `TEARDOWN` to end) negotiates the session. With the WebSocket transport the receiver answers with an explicit allowed or refused header. With the native TCP transport the reply to `SETUP` carries the data port and counts as acceptance.
-5. **Video.** ffmpeg captures the screen and encodes H.264 with access unit delimiters. The program splits the stream into access units, sends the SPS/PPS configuration first, then each frame preceded by a 128-byte header carrying the payload length, type and timestamp.
+1. **Discovery.** A PIN encodes the last three octets of the receiver's address. The first octet is guessed from the local network interfaces and each candidate is probed on the control port. An IP address is used as given.
+2. **Control channel.** A WebSocket on port 57407 carries line-based text messages: the client introduces itself, requests the receiver properties and sends a heartbeat every 3 seconds. The receiver reports events such as `startMirror`, `stopMirror` and `disconnect`.
+3. **Transport selection.** If the WebSocket RTSP port is closed and the native TCP port is open, plain TCP is used; otherwise WebSocket.
+4. **Cast channel.** An RTSP-like exchange negotiates the session: `OPTIONS` every second as keep-alive, `SETUP` to start, `TEARDOWN` to end. Over WebSocket the receiver answers with an explicit allowed/refused header; over TCP the reply to `SETUP` carries the data port and counts as acceptance.
+5. **Video.** ffmpeg captures the screen and encodes H.264 with access unit delimiters. The program splits the stream into access units, sends the SPS/PPS configuration first, then each frame preceded by a 128-byte header with payload length, type and timestamp.
 
 ### Ports
 
-| Purpose | WebSocket transport | Plain TCP transport |
+| Purpose        | WebSocket transport | Plain TCP transport |
 | -------------- | ------------------- | ------------------- |
-| Control | 57407 | 57407 |
-| RTSP | 51042 | 51040 |
-| Video | 51032 | 51030 |
-| Audio (opened) | 51033 | 51020 |
+| Control        | 57407               | 57407               |
+| RTSP           | 51042               | 51040               |
+| Video          | 51032               | 51030               |
+| Audio (opened) | 51033               | 51020               |
 
-The control channel always uses WebSocket.
+The control channel always uses WebSocket, whatever the cast transport.
 
 ## Project structure
 
-The Java sources are under `src/main/`. The logo files are in `assets/`:
-
-- `logo.png`: the original logo, read by the graphical interface.
-- `logo-readme.png`: the same logo cropped to its content, with rounded corners and a thin border, used at the top of this README.
-- `test-kittens.jpg`: the image sent by the test mode (`--test`).
+The Java sources are under `src/main/`. The logo files and the test image are in `assets/`.
 
 ```text
+assets/
+├── logo.png                   Original logo, read by the graphical interface
+├── logo-readme.png            Same logo cropped to its content, with rounded corners and a thin border, used in this README
+└── test-kittens.jpg           Image sent in test mode (--test)
+
 src/main/
 ├── Main.java                  Entry point
 ├── config/
@@ -213,35 +211,42 @@ src/main/
     └── Phase.java             Session stages reported to the interface
 ```
 
+Files in `assets/` are read from the working directory, so start the program from the project root.
+
 ## Platform notes
 
-| System | Capture backend | Notes |
-| ------- | --------------- | ------------------------------------------------------------------------------------------- |
-| Windows | `gdigrab` | Restart the IDE or terminal after installing ffmpeg so the updated `PATH` is picked up |
-| macOS | `avfoundation` | The terminal or IDE needs the Screen Recording permission. The screen device index is detected |
-| Linux | `x11grab` | Works on X11 and XWayland only. On a Wayland session use `--input` or switch to an X11 session |
+| System  | Capture backend | Notes                                                                                    |
+| ------- | --------------- | ---------------------------------------------------------------------------------------- |
+| Windows | `gdigrab`       | Restart the IDE or terminal after installing ffmpeg so the new `PATH` is picked up       |
+| macOS   | `avfoundation`  | The terminal or IDE needs the Screen Recording permission. The screen device index is detected automatically |
+| Linux   | `x11grab`       | X11 and XWayland only. On Wayland use `--input` or switch to an X11 session              |
 
 ## Troubleshooting
 
-**`Connection refused` when the cast starts.** The control port answered but the cast ports did not. The receiver may use the other transport, so try `--raw` or `--ws`. If neither works, check that screen sharing is enabled on the receiver.
+**`Connection refused` when the cast starts**
+The control port answered but the cast ports did not. The receiver may use the other transport: try `--raw` or `--ws`. If neither works, check that screen sharing is enabled on the receiver.
 
-**`ffmpeg is not executable`.** Install ffmpeg or pass its location with `--ffmpeg`. On Windows, restart the IDE after installing so it sees the new `PATH`.
+**`ffmpeg is not executable`**
+Install ffmpeg or pass its location with `--ffmpeg`. On Windows, restart the IDE after installing so it sees the new `PATH`.
 
-**The share is never accepted.** With `--type manual` the receiver has to accept the request, and the program waits up to 60 seconds for the answer.
+**The share is never accepted**
+With `--type manual` someone has to accept the request on the receiver. The program waits up to 60 seconds.
 
-**Black or empty image on Linux.** The session is probably Wayland. Use `--input` with a Wayland-capable capture command, or log in to an X11 session.
+**Black or empty image on Linux**
+The session is probably Wayland. Use `--input` with a Wayland-capable capture command, or log in to an X11 session.
 
-**Verifying the connection.** Run with `--test`. The receiver should display a photo of kittens that pans slowly, which separates connection problems from screen-capture problems. The slow movement shows that the stream is live and not frozen. The image is read from `assets/test-kittens.jpg` in the working directory, so start the program from the project root; if the file is missing, a generated test pattern is sent instead.
+**Checking the connection**
+Run with `--test`. The receiver should show a slowly panning photo of kittens: this separates connection problems from screen-capture problems, and the movement shows the stream is live and not frozen. The image is read from `assets/test-kittens.jpg` in the working directory, so start the program from the project root; if the file is missing, a generated test pattern is sent instead.
 
 ## Limitations
 
-- Only the sender side is implemented. There is no receiver.
-- Audio is not transmitted. The audio channel is opened but unused.
-- The control channel uses plain `ws://`. There is no encryption or authentication beyond the receiver accepting the share, so use it only on networks you trust and with receivers you are authorised to use.
-- Tested on Windows against a native PC receiver. The macOS and Linux code paths have not been run.
-- The graphical interface has been compiled and its layout checked in both themes, but it has not been used for a live share yet. It does not remember settings or the chosen theme between runs.
-- The protocol is reconstructed, not documented. Other receiver versions may behave differently.
+- Sender only: there is no receiver implementation.
+- No audio. The audio channel is opened but not used.
+- The control channel uses plain `ws://`, with no encryption or authentication beyond the receiver accepting the share. Use it only on trusted networks and with receivers you are authorised to use.
+- Tested only on Windows against a native PC receiver. The macOS and Linux code paths have not been run.
+- The graphical interface compiles and its layout has been checked in both themes, but it has not been used for a live share yet. It does not remember settings or the theme between runs.
+- The protocol is reconstructed, not documented: other receiver versions may behave differently.
 
 ## License
 
-This project is released under the MIT License. See the [LICENSE](LICENSE) file for the full text.
+Released under the MIT License. See [LICENSE](LICENSE) for the full text.
