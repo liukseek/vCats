@@ -243,8 +243,8 @@ Run with `--test`. The receiver should show a slowly panning photo of kittens: t
 - Sender only: there is no receiver implementation.
 - No audio. The audio channel is opened but not used.
 - The control channel uses plain `ws://`, with no encryption or authentication beyond the receiver accepting the share. Use it only on trusted networks and with receivers you are authorised to use.
-- Tested only on Windows against a native PC receiver. The macOS and Linux code paths have not been run.
-- The graphical interface compiles and its layout has been checked in both themes, but it has not been used for a live share yet. It does not remember settings or the theme between runs.
+- Tested only on Windows and macOS against a native PC receiver. Linux code paths have not been run.
+- The graphical interface compiles and its layout has been checked in both themes although it does not remember settings or the theme between runs.
 - The protocol is reconstructed, not documented: other receiver versions may behave differently.
 
 ## License
