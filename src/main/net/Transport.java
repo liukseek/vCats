@@ -1,3 +1,4 @@
+
 package main.net;
 
 import main.util.Log;
@@ -12,7 +13,11 @@ public enum Transport {
     WEBSOCKET(51042, 51032, 51033),
     TCP(51040, 51030, 51020);
 
-    public final int rtspPort, videoPort, audioPort;
+    public final int rtspPort;
+    public final int videoPort;
+    public final int audioPort;
+
+    private static final int CONNECT_TIMEOUT = 1500;
 
     Transport(int rtspPort, int videoPort, int audioPort) {
         this.rtspPort = rtspPort;
@@ -20,24 +25,78 @@ public enum Transport {
         this.audioPort = audioPort;
     }
 
-    public Channel open(HttpClient http, String host, int port, Consumer<String> onMessage, Runnable onClose) throws Exception {
-        return this == TCP ? TcpChannel.open(host, port, onMessage, onClose) : WebSocketChannel.open(http, host, port, onMessage, onClose);
+    public Channel open(
+            HttpClient http,
+            String host,
+            int port,
+            Consumer<String> onMessage,
+            Runnable onClose
+    ) throws Exception {
+        return this == TCP
+                ? TcpChannel.open(host, port, onMessage, onClose)
+                : WebSocketChannel.open(
+                        http,
+                        host,
+                        port,
+                        onMessage,
+                        onClose
+                );
     }
 
     public static Transport choose(String requested, String host) {
-        Transport t = switch (requested) {
+        Transport selected = switch (requested) {
             case "raw" -> TCP;
             case "ws" -> WEBSOCKET;
-            default -> !tcpOpen(host, WEBSOCKET.rtspPort) && tcpOpen(host, TCP.rtspPort) ? TCP : WEBSOCKET;
+            case "auto" -> chooseAvailable(host);
+            default -> throw new IllegalArgumentException(
+                    "Unknown transport: " + requested
+            );
         };
-        Log.info("cast transport: " + (t == TCP ? "native TCP" : "WebSocket") + " (ports " + t.rtspPort + "/" + t.videoPort + "/" + t.audioPort + ")");
-        return t;
+
+        Log.info(
+                "cast transport: "
+                        + (selected == TCP ? "native TCP" : "WebSocket")
+                        + " (ports "
+                        + selected.rtspPort + "/"
+                        + selected.videoPort + "/"
+                        + selected.audioPort + ")"
+        );
+
+        return selected;
+    }
+
+    private static Transport chooseAvailable(String host) {
+        if (portsOpen(host, WEBSOCKET)) {
+            return WEBSOCKET;
+        }
+
+        if (portsOpen(host, TCP)) {
+            return TCP;
+        }
+
+        Log.info(
+                "WARNING: no complete transport detected, "
+                        + "defaulting to WebSocket"
+        );
+
+        return WEBSOCKET;
+    }
+
+    private static boolean portsOpen(String host, Transport transport) {
+        return tcpOpen(host, transport.rtspPort)
+                && tcpOpen(host, transport.videoPort)
+                && tcpOpen(host, transport.audioPort);
     }
 
     private static boolean tcpOpen(String host, int port) {
-        try (Socket s = new Socket()) {
-            s.connect(new InetSocketAddress(host, port), 1500);
+        try (Socket socket = new Socket()) {
+            socket.connect(
+                    new InetSocketAddress(host, port),
+                    CONNECT_TIMEOUT
+            );
+
             return true;
+
         } catch (IOException e) {
             return false;
         }
