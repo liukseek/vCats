@@ -15,7 +15,7 @@ public final class Options {
     public String type = "manual";
     public String ffmpeg = "ffmpeg";
     public String input;
-    public String bitrate = "3M";
+    public String bitrate = "6M";
     public String transport = "auto";
 
     public int width = 1920;
