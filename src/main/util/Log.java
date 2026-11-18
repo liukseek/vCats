@@ -1,5 +1,7 @@
+
 package main.util;
 
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
@@ -12,7 +14,7 @@ public final class Log {
     }
 
     public static void info(String message) {
-        String line = "[vcast] " + message;
+        String line = "[vcast] " + String.valueOf(message);
 
         System.out.println(line);
 
@@ -20,16 +22,21 @@ public final class Log {
             try {
                 listener.accept(line);
             } catch (RuntimeException e) {
-                System.err.println("[vcast] Log listener error: " + e);
+                System.err.println(
+                        "[vcast] Log listener error: " + e
+                );
             }
         }
     }
 
     public static void addListener(Consumer<String> listener) {
-        listeners.add(listener);
+        Objects.requireNonNull(listener, "listener cannot be null");
+        listeners.addIfAbsent(listener);
     }
 
     public static void removeListener(Consumer<String> listener) {
-        listeners.remove(listener);
+        if (listener != null) {
+            listeners.remove(listener);
+        }
     }
 }

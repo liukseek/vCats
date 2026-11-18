@@ -26,7 +26,11 @@ public final class CastRunner {
     }
 
     private void setPhase(Phase phase) {
-        phaseListener.accept(phase);
+        try {
+            phaseListener.accept(phase);
+        } catch (RuntimeException e) {
+            System.err.println("Phase listener error: " + e);
+        }
     }
 
     public void run(Options options) throws Exception {
@@ -34,6 +38,8 @@ public final class CastRunner {
             if (stopped.get()) return;
 
             Ffmpeg.check(options);
+
+            if (stopped.get()) return;
 
             setPhase(Phase.RESOLVING);
             String host = PinResolver.resolveHost(http, options.target);
@@ -43,16 +49,15 @@ public final class CastRunner {
             setPhase(Phase.CONNECTING);
             Transport transport = Transport.choose(options.transport, host);
 
+            if (stopped.get()) return;
+
             CastSession current = new CastSession(
                     options, http, host, transport
             );
 
             session = current;
 
-            if (stopped.get()) {
-                current.shutdown();
-                return;
-            }
+            if (stopped.get()) return;
 
             setPhase(Phase.WAITING);
             current.run();
@@ -69,18 +74,14 @@ public final class CastRunner {
     }
 
     public void stop() {
-        stopped.set(true);
-
-        CastSession current = session;
-        if (current != null) {
-            current.shutdown();
-        }
+        shutdown();
     }
 
     public void shutdown() {
         stopped.set(true);
 
         CastSession current = session;
+
         if (current != null) {
             current.shutdown();
         }
