@@ -16,7 +16,7 @@ class OptionsTest {
         assertEquals("manual", options.type);
         assertEquals("ffmpeg", options.ffmpeg);
         assertNull(options.input);
-        assertEquals("3M", options.bitrate);
+        assertEquals("6M", options.bitrate);
         assertEquals("auto", options.transport);
         assertEquals(1920, options.width);
         assertEquals(1080, options.height);
