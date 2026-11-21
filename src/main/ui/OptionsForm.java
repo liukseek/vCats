@@ -53,6 +53,7 @@ final class OptionsForm extends JPanel {
     private final FlatComboBox<String> fps = new FlatComboBox<>(new String[]{"15", "24", "30", "60"}, true);
     private final FlatTextField bitrate = new FlatTextField("3M");
     private final ToggleSwitch test = new ToggleSwitch("Send the test image (kittens) instead of the screen");
+    private final ToggleSwitch audio = new ToggleSwitch("Condividi audio del sistema");
     private final FlatTextField ffmpeg = new FlatTextField("ffmpeg");
     private final FlatButton browse = new FlatButton("Browse", FlatButton.Variant.GHOST);
     private final FlatTextField input = new FlatTextField("");
@@ -60,7 +61,7 @@ final class OptionsForm extends JPanel {
     private final ChevronIcon chevron = new ChevronIcon();
     private final Card advancedCard = new Card();
 
-    private final List<JComponent> controls = List.of(target, name, type, transport, size, fps, bitrate, test, ffmpeg, browse, input);
+    private final List<JComponent> controls = List.of(target, name, type, transport, size, fps, bitrate, test, audio, ffmpeg, browse, input);
 
     OptionsForm(IntConsumer onHeightChange) {
         setOpaque(false);
@@ -100,6 +101,7 @@ final class OptionsForm extends JPanel {
         card.add(labeled("Frame rate", fps), cell(1, 1, 1, false));
         card.add(labeled("Bitrate", bitrate), cell(2, 1, 1, true));
         card.add(test, cell(0, 2, 3, true));
+        card.add(audio, cell(0, 3, 3, true));
         return card;
     }
 
@@ -210,6 +212,7 @@ final class OptionsForm extends JPanel {
         o.input = in.isEmpty() ? null : in;
 
         o.test = test.isSelected();
+        o.audio = audio.isSelected();
         return o;
     }
 

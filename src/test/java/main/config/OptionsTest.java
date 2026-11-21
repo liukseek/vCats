@@ -22,6 +22,7 @@ class OptionsTest {
         assertEquals(1080, options.height);
         assertEquals(30, options.fps);
         assertFalse(options.test);
+        assertFalse(options.audio);
     }
 
     @Test
@@ -45,6 +46,7 @@ class OptionsTest {
                 "--fps", "60",
                 "--size", "1280x720",
                 "--test",
+                "--audio",
                 "--raw"
         });
 
@@ -58,7 +60,18 @@ class OptionsTest {
         assertEquals(1280, options.width);
         assertEquals(720, options.height);
         assertTrue(options.test);
+        assertTrue(options.audio);
         assertEquals("raw", options.transport);
+    }
+
+    @Test
+    void shouldEnableAudioWhenRequested() {
+        Options options = Options.parse(new String[]{
+                "192.168.1.100",
+                "--audio"
+        });
+
+        assertTrue(options.audio);
     }
 
     @Test

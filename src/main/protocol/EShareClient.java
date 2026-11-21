@@ -2,6 +2,7 @@
 package main.protocol;
 
 import main.net.Channel;
+import main.net.ChannelFactory;
 import main.net.Transport;
 import main.util.Log;
 
@@ -21,12 +22,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class EShareClient {
+
     private static final Pattern DECISION =
             Pattern.compile("(?im)^x-command-header:\\s*(\\w+)");
 
     private final String host;
     private final String user;
     private final Transport transport;
+    private final ChannelFactory channelFactory;
 
     private volatile Channel rtsp;
     private volatile Channel video;
@@ -49,9 +52,19 @@ public final class EShareClient {
             });
 
     public EShareClient(String host, String user, Transport transport) {
+        this(host, user, transport, transport::open);
+    }
+
+    public EShareClient(
+            String host,
+            String user,
+            Transport transport,
+            ChannelFactory channelFactory
+    ) {
         this.host = host;
         this.user = user;
         this.transport = transport;
+        this.channelFactory = channelFactory;
     }
 
     public synchronized void connect(HttpClient http, Runnable onLost)
@@ -70,30 +83,60 @@ public final class EShareClient {
         Channel openedAudio = null;
 
         try {
-            openedRtsp = transport.open(
-                    http, host, transport.rtspPort,
-                    this::onReply, () -> notifyLost(onLost)
+            Log.info("EShare: connecting RTSP channel to "
+                    + host + ":" + transport.rtspPort);
+
+            openedRtsp = channelFactory.open(
+                    http,
+                    host,
+                    transport.rtspPort,
+                    this::onReply,
+                    () -> notifyLost(onLost)
             );
+
             checkConnection();
 
-            openedVideo = transport.open(
-                    http, host, transport.videoPort,
-                    m -> {}, () -> notifyLost(onLost)
+            Log.info("EShare: RTSP channel connected");
+
+            Log.info("EShare: connecting VIDEO channel to "
+                    + host + ":" + transport.videoPort);
+
+            openedVideo = channelFactory.open(
+                    http,
+                    host,
+                    transport.videoPort,
+                    m -> {},
+                    () -> notifyLost(onLost)
             );
+
             checkConnection();
 
-            openedAudio = transport.open(
-                    http, host, transport.audioPort,
-                    m -> {}, () -> notifyLost(onLost)
+            Log.info("EShare: VIDEO channel connected");
+
+            Log.info("EShare: connecting AUDIO channel to "
+                    + host + ":" + transport.audioPort);
+
+            openedAudio = channelFactory.open(
+                    http,
+                    host,
+                    transport.audioPort,
+                    m -> {},
+                    () -> notifyLost(onLost)
             );
+
             checkConnection();
+
+            Log.info("EShare: AUDIO channel connected");
 
             rtsp = openedRtsp;
             video = openedVideo;
             audio = openedAudio;
 
             timer.scheduleAtFixedRate(
-                    this::options, 0, 1, TimeUnit.SECONDS
+                    this::options,
+                    0,
+                    1,
+                    TimeUnit.SECONDS
             );
 
             Log.info("EShare: all channels connected");
@@ -110,6 +153,13 @@ public final class EShareClient {
             rtsp = null;
             video = null;
             audio = null;
+
+            Log.info("EShare: connection failed while opening media channels");
+            Log.info("EShare: target was " + host);
+            Log.info("EShare: configured ports: RTSP="
+                    + transport.rtspPort
+                    + ", VIDEO=" + transport.videoPort
+                    + ", AUDIO=" + transport.audioPort);
 
             throw e;
         }
@@ -146,7 +196,9 @@ public final class EShareClient {
     }
 
     private void onReply(String reply) {
-        if (closed) return;
+        if (closed) {
+            return;
+        }
 
         if (transport == Transport.TCP) {
             Log.info("RTSP <- "
@@ -156,8 +208,10 @@ public final class EShareClient {
         if (transport == Transport.TCP
                 && reply.contains("bplist00")
                 && !decision.isDone()) {
+
             Log.info("EShare: SETUP accepted (dataPort "
                     + transport.videoPort + ")");
+
             decision.complete(true);
         }
 
@@ -182,7 +236,9 @@ public final class EShareClient {
     }
 
     private synchronized void options() {
-        if (closed || channelLost.get() || rtsp == null) return;
+        if (closed || channelLost.get() || rtsp == null) {
+            return;
+        }
 
         String request = "OPTIONS rtsp://" + host + " RTSP/1.0\r\n"
                 + "CSeq: " + (cseq++) + "\r\n"
@@ -212,14 +268,17 @@ public final class EShareClient {
                 + "Content-Length: " + plist.length + "\r\n\r\n";
 
         byte[] header = head.getBytes(StandardCharsets.UTF_8);
+
         byte[] request = Arrays.copyOf(
                 header,
                 header.length + plist.length
         );
 
         System.arraycopy(
-                plist, 0,
-                request, header.length,
+                plist,
+                0,
+                request,
+                header.length,
                 plist.length
         );
 
@@ -231,7 +290,9 @@ public final class EShareClient {
     }
 
     private synchronized void teardown() {
-        if (rtsp == null) return;
+        if (rtsp == null) {
+            return;
+        }
 
         byte[] plist = Protocol.STREAM_PLIST;
 
@@ -241,14 +302,17 @@ public final class EShareClient {
                 + "Content-Length: " + plist.length + "\r\n\r\n";
 
         byte[] header = head.getBytes(StandardCharsets.UTF_8);
+
         byte[] request = Arrays.copyOf(
                 header,
                 header.length + plist.length
         );
 
         System.arraycopy(
-                plist, 0,
-                request, header.length,
+                plist,
+                0,
+                request,
+                header.length,
                 plist.length
         );
 
@@ -266,6 +330,7 @@ public final class EShareClient {
                 .order(ByteOrder.LITTLE_ENDIAN);
 
         buffer.putInt(payloadLen);
+
         buffer.putShort((short) type)
                 .putShort((short) 0)
                 .putShort((short) 0);
@@ -291,7 +356,10 @@ public final class EShareClient {
 
     private void ensureConnected() {
         if (closed || channelLost.get()
-                || rtsp == null || video == null || audio == null) {
+                || rtsp == null
+                || video == null
+                || audio == null) {
+
             throw new IllegalStateException(
                     "EShareClient is not connected"
             );
@@ -299,7 +367,9 @@ public final class EShareClient {
     }
 
     private void closeChannel(Channel channel) {
-        if (channel == null) return;
+        if (channel == null) {
+            return;
+        }
 
         try {
             channel.close();
@@ -309,7 +379,9 @@ public final class EShareClient {
     }
 
     public synchronized void close() {
-        if (closed) return;
+        if (closed) {
+            return;
+        }
 
         closed = true;
         decision.complete(false);

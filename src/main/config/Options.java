@@ -23,6 +23,7 @@ public final class Options {
     public int fps = 30;
 
     public boolean test;
+    public boolean audio;
 
     public Options() {
     }
@@ -62,6 +63,9 @@ public final class Options {
                     parseSize(options, requireValue(args, ++i, arg));
                     break;
 
+                case "--audio":
+                    options.audio = true;
+                    break;
                 case "--test":
                     options.test = true;
                     break;

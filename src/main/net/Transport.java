@@ -33,7 +33,13 @@ public enum Transport {
             Runnable onClose
     ) throws Exception {
         return this == TCP
-                ? TcpChannel.open(host, port, onMessage, onClose)
+                ? TcpChannel.open(
+                        host,
+                        port,
+                        onMessage,
+                        onClose,
+                        port == rtspPort
+                )
                 : WebSocketChannel.open(
                         http,
                         host,

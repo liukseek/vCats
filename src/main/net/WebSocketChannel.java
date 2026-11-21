@@ -1,4 +1,3 @@
-
 package main.net;
 
 import main.util.Log;
@@ -16,6 +15,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public final class WebSocketChannel implements Channel, WebSocket.Listener {
+
+    private static final int MAX_MESSAGE_SIZE = 4 * 1024 * 1024;
+
     private final String name;
     private final Consumer<String> onMessage;
     private final Runnable onClose;
@@ -46,43 +48,51 @@ public final class WebSocketChannel implements Channel, WebSocket.Listener {
             Consumer<String> onMessage,
             Runnable onClose
     ) throws Exception {
-        WebSocketChannel c = new WebSocketChannel(
+
+        WebSocketChannel channel = new WebSocketChannel(
                 host + ":" + port,
                 onMessage,
                 onClose
         );
 
-        c.ws = http.newWebSocketBuilder()
+        channel.ws = http.newWebSocketBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .buildAsync(
                         URI.create("ws://" + host + ":" + port),
-                        c
+                        channel
                 )
                 .get(8, TimeUnit.SECONDS);
 
-        return c;
+        return channel;
     }
 
     @Override
-    public synchronized void sendText(String s) {
+    public void onOpen(WebSocket socket) {
+        ws = socket;
+        socket.request(1);
+        Log.info(name + " connected");
+    }
+
+    @Override
+    public synchronized void sendText(String message) {
         ensureOpen();
 
         try {
-            ws.sendText(s, true).join();
+            ws.sendText(message, true).join();
         } catch (RuntimeException e) {
-            notifyClosed();
+            fail(e);
             throw e;
         }
     }
 
     @Override
-    public synchronized void sendBinary(byte[] b) {
+    public synchronized void sendBinary(byte[] data) {
         ensureOpen();
 
         try {
-            ws.sendBinary(ByteBuffer.wrap(b), true).join();
+            ws.sendBinary(ByteBuffer.wrap(data), true).join();
         } catch (RuntimeException e) {
-            notifyClosed();
+            fail(e);
             throw e;
         }
     }
@@ -97,7 +107,11 @@ public final class WebSocketChannel implements Channel, WebSocket.Listener {
 
     @Override
     public void close() {
-        if (!closed.compareAndSet(false, true)) return;
+        if (!closed.compareAndSet(false, true)) {
+            return;
+        }
+
+        clearBuffers();
 
         WebSocket socket = ws;
 
@@ -112,28 +126,41 @@ public final class WebSocketChannel implements Channel, WebSocket.Listener {
                     "bye"
             ).whenComplete((result, error) -> {
                 if (error != null) {
-                    notifyClosed();
+                    socket.abort();
                 }
+
+                notifyClosed();
             });
 
         } catch (RuntimeException e) {
+            socket.abort();
             notifyClosed();
         }
     }
 
     @Override
     public CompletionStage<?> onText(
-            WebSocket w,
+            WebSocket socket,
             CharSequence data,
             boolean last
     ) {
         String message = null;
 
         try {
-            if (closed.get()) return null;
+            if (closed.get()) {
+                return null;
+            }
 
             synchronized (bufferLock) {
-                if (closed.get()) return null;
+                if (closed.get()) {
+                    return null;
+                }
+
+                if ((long) text.length() + data.length() > MAX_MESSAGE_SIZE) {
+                    throw new IllegalStateException(
+                            "WebSocket text message exceeds size limit"
+                    );
+                }
 
                 text.append(data);
 
@@ -148,10 +175,13 @@ public final class WebSocketChannel implements Channel, WebSocket.Listener {
             }
 
         } catch (RuntimeException e) {
-            Log.info(name + " message error: " + e);
+            Log.info(name + " text message error: " + e);
+            fail(e);
 
         } finally {
-            w.request(1);
+            if (!closed.get()) {
+                socket.request(1);
+            }
         }
 
         return null;
@@ -159,25 +189,36 @@ public final class WebSocketChannel implements Channel, WebSocket.Listener {
 
     @Override
     public CompletionStage<?> onBinary(
-            WebSocket w,
+            WebSocket socket,
             ByteBuffer data,
             boolean last
     ) {
         String message = null;
 
         try {
-            if (closed.get()) return null;
-
-            byte[] chunk = new byte[data.remaining()];
-            data.get(chunk);
+            if (closed.get()) {
+                return null;
+            }
 
             synchronized (bufferLock) {
-                if (closed.get()) return null;
+                if (closed.get()) {
+                    return null;
+                }
+
+                if ((long) bin.size() + data.remaining() > MAX_MESSAGE_SIZE) {
+                    throw new IllegalStateException(
+                            "WebSocket binary message exceeds size limit"
+                    );
+                }
+
+                byte[] chunk = new byte[data.remaining()];
+                data.get(chunk);
 
                 bin.write(chunk, 0, chunk.length);
 
                 if (last) {
-                    message = bin.toString(StandardCharsets.UTF_8);
+                    // Conversione reversibile: un byte per carattere.
+                    message = bin.toString(StandardCharsets.ISO_8859_1);
                     bin.reset();
                 }
             }
@@ -188,9 +229,12 @@ public final class WebSocketChannel implements Channel, WebSocket.Listener {
 
         } catch (RuntimeException e) {
             Log.info(name + " binary message error: " + e);
+            fail(e);
 
         } finally {
-            w.request(1);
+            if (!closed.get()) {
+                socket.request(1);
+            }
         }
 
         return null;
@@ -198,7 +242,7 @@ public final class WebSocketChannel implements Channel, WebSocket.Listener {
 
     @Override
     public CompletionStage<?> onClose(
-            WebSocket w,
+            WebSocket socket,
             int code,
             String reason
     ) {
@@ -208,9 +252,31 @@ public final class WebSocketChannel implements Channel, WebSocket.Listener {
     }
 
     @Override
-    public void onError(WebSocket w, Throwable t) {
-        Log.info(name + " error: " + t);
+    public void onError(WebSocket socket, Throwable error) {
+        Log.info(name + " error: " + error);
+        fail(error);
+    }
+
+    private void fail(Throwable error) {
+        Log.info(name + " connection failure: " + error);
+
+        closed.set(true);
+        clearBuffers();
+
+        WebSocket socket = ws;
+
+        if (socket != null) {
+            socket.abort();
+        }
+
         notifyClosed();
+    }
+
+    private void clearBuffers() {
+        synchronized (bufferLock) {
+            text.setLength(0);
+            bin.reset();
+        }
     }
 
     private void notifyClosed() {

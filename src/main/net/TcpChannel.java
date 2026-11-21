@@ -1,4 +1,3 @@
-
 package main.net;
 
 import main.util.Log;
@@ -14,10 +13,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 final class TcpChannel implements Channel {
+
     private final String name;
     private final Consumer<String> onMessage;
     private final Runnable onClose;
     private final Socket sock;
+    private final boolean rtsp;
 
     private final AtomicBoolean closing = new AtomicBoolean();
     private final AtomicBoolean closeNotified = new AtomicBoolean();
@@ -26,44 +27,49 @@ final class TcpChannel implements Channel {
             String name,
             Socket sock,
             Consumer<String> onMessage,
-            Runnable onClose
+            Runnable onClose,
+            boolean rtsp
     ) {
         this.name = name;
         this.sock = sock;
         this.onMessage = onMessage;
         this.onClose = onClose;
+        this.rtsp = rtsp;
     }
 
     static TcpChannel open(
             String host,
             int port,
             Consumer<String> onMessage,
-            Runnable onClose
+            Runnable onClose,
+            boolean rtsp
     ) throws IOException {
+
         Socket s = new Socket();
 
         try {
             s.connect(new InetSocketAddress(host, port), 5000);
             s.setTcpNoDelay(true);
 
-            TcpChannel c = new TcpChannel(
+            TcpChannel channel = new TcpChannel(
                     host + ":" + port,
                     s,
                     onMessage,
-                    onClose
+                    onClose,
+                    rtsp
             );
 
-            Thread t = new Thread(
-                    c::readLoop,
+            Thread thread = new Thread(
+                    channel::readLoop,
                     "tcp-" + port
             );
 
-            t.setDaemon(true);
-            t.start();
+            thread.setDaemon(true);
+            thread.start();
 
-            return c;
+            return channel;
 
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             try {
                 s.close();
             } catch (IOException ignored) {
@@ -74,21 +80,34 @@ final class TcpChannel implements Channel {
     }
 
     private void readLoop() {
+        RtspFramer framer = rtsp ? new RtspFramer() : null;
+
         try (InputStream in = sock.getInputStream()) {
             byte[] buffer = new byte[8192];
             int n;
 
             while (!closing.get() && (n = in.read(buffer)) != -1) {
-                if (n == 0) continue;
+                if (n == 0) {
+                    continue;
+                }
 
-                onMessage.accept(
-                        new String(
-                                buffer,
-                                0,
-                                n,
-                                StandardCharsets.UTF_8
-                        )
-                );
+                if (rtsp) {
+                    framer.feed(buffer, n, onMessage);
+                } else {
+                    // Rappresentazione reversibile dei byte, senza UTF-8.
+                    onMessage.accept(
+                            new String(
+                                    buffer,
+                                    0,
+                                    n,
+                                    StandardCharsets.ISO_8859_1
+                            )
+                    );
+                }
+            }
+
+            if (!closing.get() && rtsp) {
+                framer.finish();
             }
 
         } catch (IOException e) {
@@ -110,16 +129,14 @@ final class TcpChannel implements Channel {
     }
 
     @Override
-    public synchronized void sendBinary(byte[] b) {
+    public synchronized void sendBinary(byte[] data) {
         if (closing.get() || sock.isClosed()) {
-            throw new IllegalStateException(
-                    "TCP channel is closed"
-            );
+            throw new IllegalStateException("TCP channel is closed");
         }
 
         try {
             OutputStream out = sock.getOutputStream();
-            out.write(b);
+            out.write(data);
             out.flush();
 
         } catch (IOException e) {
@@ -130,7 +147,9 @@ final class TcpChannel implements Channel {
 
     @Override
     public void close() {
-        if (!closing.compareAndSet(false, true)) return;
+        if (!closing.compareAndSet(false, true)) {
+            return;
+        }
 
         try {
             sock.close();
