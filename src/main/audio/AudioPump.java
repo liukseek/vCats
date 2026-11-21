@@ -3,7 +3,6 @@ package main.audio;
 import main.util.Log;
 
 import java.io.InputStream;
-import java.util.Arrays;
 import java.util.function.Consumer;
 
 public final class AudioPump implements Runnable {
@@ -24,17 +23,17 @@ public final class AudioPump implements Runnable {
 
     @Override
     public void run() {
-        byte[] buffer = new byte[16 * 1024];
+        byte[] frame = new byte[AudioCapture.FRAME_BYTES];
 
         try (InputStream in = input) {
-            int n;
+            while (true) {
+                int n = in.readNBytes(frame, 0, frame.length);
 
-            while ((n = in.read(buffer)) != -1) {
-                if (n == 0) {
-                    continue;
+                if (n < frame.length) {
+                    break;
                 }
 
-                onData.accept(Arrays.copyOf(buffer, n));
+                onData.accept(frame.clone());
             }
 
         } catch (Exception e) {

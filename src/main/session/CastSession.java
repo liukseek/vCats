@@ -1,6 +1,8 @@
 
 package main.session;
 
+import main.audio.AudioCapture;
+import main.audio.AudioPump;
 import main.config.Options;
 import main.media.Ffmpeg;
 import main.media.VideoPump;
@@ -26,6 +28,7 @@ public final class CastSession {
     private volatile ControlClient control;
     private volatile EShareClient eshare;
     private volatile Process ffmpeg;
+    private volatile AudioCapture audioCapture;
 
     public CastSession(Options o, HttpClient http, String host, Transport transport) {
         this.o = o;
@@ -113,10 +116,46 @@ public final class CastSession {
             pump.setDaemon(true);
             pump.start();
 
+            if (o.audio) {
+                startAudio(client);
+            }
+
         } catch (Exception e) {
             Log.info("cast error: " + e);
             done.countDown();
         }
+    }
+
+    private void startAudio(EShareClient client) {
+        AudioCapture capture = new AudioCapture();
+
+        try {
+            capture.start(o);
+
+        } catch (Exception e) {
+            Log.info("audio disabled: " + e.getMessage());
+            capture.close();
+            return;
+        }
+
+        audioCapture = capture;
+
+        if (stopped.get()) {
+            capture.close();
+            return;
+        }
+
+        Thread pump = new Thread(
+                new AudioPump(
+                        capture.getInputStream(),
+                        client::sendAudio,
+                        () -> Log.info("audio stream ended")
+                ),
+                "vcast-audio"
+        );
+
+        pump.setDaemon(true);
+        pump.start();
     }
 
     public void shutdown() {
@@ -137,6 +176,9 @@ public final class CastSession {
                 Thread.currentThread().interrupt();
             }
         }
+
+        AudioCapture capture = audioCapture;
+        if (capture != null) capture.close();
 
         EShareClient client = eshare;
         if (client != null) client.close();

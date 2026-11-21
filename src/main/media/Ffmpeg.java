@@ -1,26 +1,24 @@
-
 package main.media;
 
+import main.config.Bitrate;
 import main.config.Options;
+import main.util.AppPaths;
 import main.util.Log;
+import main.util.Processes;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class Ffmpeg {
-    private static final Path TEST_IMAGE =
-            Path.of("assets", "test-kittens.jpg");
+    private static final String TEST_IMAGE = "assets/test-kittens.jpg";
 
     private static final long CHECK_TIMEOUT = 5;
     private static final long DEVICE_TIMEOUT = 5;
@@ -32,70 +30,13 @@ public final class Ffmpeg {
         return System.getProperty("os.name").toLowerCase();
     }
 
-    private record ProcessResult(int exitCode, String output) {
-    }
-
-    private static ProcessResult execute(
-            List<String> command,
-            long timeout
-    ) throws IOException, InterruptedException {
-
-        Process process = new ProcessBuilder(command)
-                .redirectErrorStream(true)
-                .start();
-
-        CompletableFuture<String> output = CompletableFuture.supplyAsync(() -> {
-            try (var in = process.getInputStream()) {
-                return new String(
-                        in.readAllBytes(),
-                        StandardCharsets.UTF_8
-                );
-            } catch (IOException e) {
-                throw new CompletionException(e);
-            }
-        });
-
-        if (!process.waitFor(timeout, TimeUnit.SECONDS)) {
-            process.destroyForcibly();
-            process.waitFor();
-
-            throw new IOException(
-                    "process timed out after " + timeout + " seconds"
-            );
-        }
-
-        try {
-            return new ProcessResult(
-                    process.exitValue(),
-                    output.get()
-            );
-
-        } catch (ExecutionException e) {
-            Throwable cause = e.getCause();
-
-            if (cause instanceof CompletionException
-                    && cause.getCause() != null) {
-                cause = cause.getCause();
-            }
-
-            if (cause instanceof IOException io) {
-                throw io;
-            }
-
-            throw new IOException(
-                    "could not read process output",
-                    cause
-            );
-        }
-    }
-
     public static void check(Options o)
             throws IOException, InterruptedException {
 
-        ProcessResult result;
+        Processes.Result result;
 
         try {
-            result = execute(
+            result = Processes.run(
                     List.of(o.ffmpeg, "-version"),
                     CHECK_TIMEOUT
             );
@@ -148,25 +89,28 @@ public final class Ffmpeg {
 
         String os = os();
 
-        String filter =
-                "scale=" + o.width + ":" + o.height
-                        + ",format=yuv420p";
+        int width = even(o.width);
+        int height = even(o.height);
 
-        if (o.test && Files.isRegularFile(TEST_IMAGE)) {
-            Log.info("test source: " + TEST_IMAGE);
+        String filter = fitFilter(width, height);
+
+        Path image = o.test ? testImage() : null;
+
+        if (image != null) {
+            Log.info("test source: " + image);
 
             c.addAll(List.of(
                     "-re",
                     "-loop", "1",
                     "-framerate", "" + o.fps,
-                    "-i", TEST_IMAGE.toAbsolutePath().toString()
+                    "-i", image.toAbsolutePath().toString()
             ));
 
             filter = "scale="
-                    + Math.round(o.width * 1.12)
-                    + ":" + Math.round(o.height * 1.12)
+                    + Math.round(width * 1.12)
+                    + ":" + Math.round(height * 1.12)
                     + ":force_original_aspect_ratio=increase,"
-                    + "crop=" + o.width + ":" + o.height
+                    + "crop=" + width + ":" + height
                     + ":x='(iw-ow)/2*(1+sin(t/2))'"
                     + ":y='(ih-oh)*(0.1+0.15*(1-cos(t/3)))'"
                     + ",format=yuv420p";
@@ -181,7 +125,7 @@ public final class Ffmpeg {
                     "-re",
                     "-f", "lavfi",
                     "-i", "testsrc2=size="
-                            + o.width + "x" + o.height
+                            + width + "x" + height
                             + ":rate=" + o.fps
             ));
 
@@ -192,6 +136,7 @@ public final class Ffmpeg {
             c.addAll(List.of(
                     "-f", "gdigrab",
                     "-framerate", "" + o.fps,
+                    "-draw_mouse", "1",
                     "-i", "desktop"
             ));
 
@@ -214,6 +159,8 @@ public final class Ffmpeg {
             ));
         }
 
+        long kbps = Bitrate.parseKbps(o.bitrate);
+
         c.addAll(List.of(
                 "-vf", filter,
                 "-an",
@@ -221,9 +168,9 @@ public final class Ffmpeg {
                 "-preset", "ultrafast",
                 "-tune", "zerolatency",
                 "-profile:v", "baseline",
-                "-b:v", o.bitrate,
-                "-maxrate", o.bitrate,
-                "-bufsize", o.bitrate,
+                "-b:v", kbps + "k",
+                "-maxrate", kbps + "k",
+                "-bufsize", (kbps * 2) + "k",
                 "-g", "" + (o.fps * 2),
                 "-x264-params",
                 "aud=1:repeat-headers=1:bframes=0",
@@ -232,6 +179,43 @@ public final class Ffmpeg {
         ));
 
         return c;
+    }
+
+    static String fitFilter(int width, int height) {
+        return "scale=" + width + ":" + height
+                + ":force_original_aspect_ratio=decrease"
+                + ",format=yuv420p"
+                + ",pad=" + width + ":" + height
+                + ":(ow-iw)/2:(oh-ih)/2"
+                + ",setsar=1";
+    }
+
+    private static int even(int value) {
+        return Math.max(2, value & ~1);
+    }
+
+    private static Path testImage() {
+        Path found = AppPaths.find(TEST_IMAGE);
+
+        if (found != null) {
+            return found;
+        }
+
+        try (InputStream in = Ffmpeg.class.getResourceAsStream("/" + TEST_IMAGE)) {
+            if (in == null) {
+                return null;
+            }
+
+            Path temp = Files.createTempFile("vcats-test-", ".jpg");
+            temp.toFile().deleteOnExit();
+            Files.copy(in, temp, StandardCopyOption.REPLACE_EXISTING);
+
+            return temp;
+
+        } catch (IOException e) {
+            Log.info("could not extract the test image: " + e.getMessage());
+            return null;
+        }
     }
 
     private static List<String> parseInput(String input) {
@@ -339,7 +323,7 @@ public final class Ffmpeg {
 
     private static String macScreenIndex(String ffmpeg) {
         try {
-            ProcessResult result = execute(
+            Processes.Result result = Processes.run(
                     List.of(
                             ffmpeg,
                             "-hide_banner",

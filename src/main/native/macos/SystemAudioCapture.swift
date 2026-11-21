@@ -49,7 +49,7 @@ final class AudioOutput: NSObject, SCStreamOutput {
                 convertAndWrite(input)
             }
         } catch {
-            log("Errore lettura audio: \(error.localizedDescription)")
+            log("Audio read error: \(error.localizedDescription)")
         }
     }
 
@@ -63,7 +63,7 @@ final class AudioOutput: NSObject, SCStreamOutput {
         }
 
         guard let converter else {
-            log("Impossibile creare il convertitore audio")
+            log("Could not create the audio converter")
             return
         }
 
@@ -98,7 +98,7 @@ final class AudioOutput: NSObject, SCStreamOutput {
         }
 
         if let conversionError {
-            log("Errore conversione: \(conversionError.localizedDescription)")
+            log("Conversion error: \(conversionError.localizedDescription)")
             return
         }
 
@@ -125,7 +125,7 @@ struct SystemAudioCapture {
 
     static func main() async {
         do {
-            log("Inizializzazione ScreenCaptureKit...")
+            log("Initializing ScreenCaptureKit...")
 
             let content = try await SCShareableContent
                 .excludingDesktopWindows(
@@ -139,7 +139,7 @@ struct SystemAudioCapture {
                     code: 1,
                     userInfo: [
                         NSLocalizedDescriptionKey:
-                            "Nessun display disponibile"
+                            "No display available"
                     ]
                 )
             }
@@ -177,15 +177,15 @@ struct SystemAudioCapture {
 
             try await stream.startCapture()
 
-            log("Acquisizione avviata: PCM 48000 Hz, stereo, signed 16-bit")
-            log("Microfono disabilitato. Premi CTRL+C per terminare.")
+            log("Capture started: PCM 48000 Hz, stereo, signed 16-bit")
+            log("Microphone disabled. Press CTRL+C to stop.")
 
             while true {
                 try await Task.sleep(for: .seconds(3600))
             }
 
         } catch {
-            log("ERRORE: \(error.localizedDescription)")
+            log("ERROR: \(error.localizedDescription)")
             exit(EXIT_FAILURE)
         }
     }

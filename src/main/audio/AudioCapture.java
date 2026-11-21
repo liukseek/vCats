@@ -1,62 +1,41 @@
 package main.audio;
 
+import main.config.Options;
 import main.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Locale;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class AudioCapture implements AutoCloseable {
+    public static final int SAMPLE_RATE = 48_000;
+    public static final int CHANNELS = 2;
+    public static final int BYTES_PER_SAMPLE = 2;
+    public static final int FRAME_MS = 20;
+    public static final int FRAME_BYTES =
+            SAMPLE_RATE / 1000 * FRAME_MS * CHANNELS * BYTES_PER_SAMPLE;
 
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     private Process process;
 
-    public synchronized void start() throws IOException {
+    public synchronized void start(Options options) throws IOException {
         if (running.get()) {
             return;
         }
 
-        String os = System.getProperty("os.name")
-                .toLowerCase(Locale.ROOT);
+        List<String> command = AudioSource.command(options);
 
-        String arch = System.getProperty("os.arch")
-                .toLowerCase(Locale.ROOT);
-
-        if (!os.contains("mac")) {
-            throw new UnsupportedOperationException(
-                    "System audio capture not supported on this OS yet"
-            );
-        }
-
-        if (!arch.equals("aarch64") && !arch.equals("arm64")) {
-            throw new UnsupportedOperationException(
-                    "Unsupported macOS architecture: " + arch
-            );
-        }
-
-        Path executable = Path.of(
-                "native", "macos", "vcats-audio"
-        ).toAbsolutePath();
-
-        if (!Files.isExecutable(executable)) {
-            throw new IOException(
-                    "Audio helper not found or not executable: "
-                            + executable
-            );
-        }
-
-        process = new ProcessBuilder(executable.toString())
+        process = new ProcessBuilder(command)
                 .redirectError(ProcessBuilder.Redirect.INHERIT)
                 .start();
 
         running.set(true);
 
-        Log.info("System audio capture started");
+        Log.info("audio capture started: PCM "
+                + SAMPLE_RATE + " Hz, " + CHANNELS + " channels, 16-bit");
     }
 
     public synchronized InputStream getInputStream() {
@@ -96,6 +75,6 @@ public final class AudioCapture implements AutoCloseable {
 
         process = null;
 
-        Log.info("System audio capture stopped");
+        Log.info("audio capture stopped");
     }
 }

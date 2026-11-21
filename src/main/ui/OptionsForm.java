@@ -1,5 +1,6 @@
 package main.ui;
 
+import main.config.Bitrate;
 import main.config.Options;
 import main.ui.theme.Theme;
 import main.ui.widget.Card;
@@ -37,7 +38,6 @@ final class OptionsForm extends JPanel {
     }
 
     private static final Pattern SIZE = Pattern.compile("(\\d+)\\s*x\\s*(\\d+)");
-    private static final Pattern BITRATE = Pattern.compile("\\d+[kKmM]?");
     private static final int SECTION_GAP = 12;
 
     private final FlatTextField target = new FlatTextField("");
@@ -51,9 +51,10 @@ final class OptionsForm extends JPanel {
             new Choice("ws", "WebSocket")}, false);
     private final FlatComboBox<String> size = new FlatComboBox<>(new String[]{"1920x1080", "1280x720", "1024x768", "2560x1440"}, true);
     private final FlatComboBox<String> fps = new FlatComboBox<>(new String[]{"15", "24", "30", "60"}, true);
-    private final FlatTextField bitrate = new FlatTextField("3M");
+    private final FlatTextField bitrate = new FlatTextField(new Options().bitrate);
     private final ToggleSwitch test = new ToggleSwitch("Send the test image (kittens) instead of the screen");
-    private final ToggleSwitch audio = new ToggleSwitch("Condividi audio del sistema");
+    private final ToggleSwitch audio = new ToggleSwitch("Share system audio");
+    private final FlatTextField audioDevice = new FlatTextField("");
     private final FlatTextField ffmpeg = new FlatTextField("ffmpeg");
     private final FlatButton browse = new FlatButton("Browse", FlatButton.Variant.GHOST);
     private final FlatTextField input = new FlatTextField("");
@@ -61,7 +62,7 @@ final class OptionsForm extends JPanel {
     private final ChevronIcon chevron = new ChevronIcon();
     private final Card advancedCard = new Card();
 
-    private final List<JComponent> controls = List.of(target, name, type, transport, size, fps, bitrate, test, audio, ffmpeg, browse, input);
+    private final List<JComponent> controls = List.of(target, name, type, transport, size, fps, bitrate, test, audio, audioDevice, ffmpeg, browse, input);
 
     OptionsForm(IntConsumer onHeightChange) {
         setOpaque(false);
@@ -69,6 +70,8 @@ final class OptionsForm extends JPanel {
 
         target.setPlaceholder("ABC123 or 192.168.1.50");
         input.setPlaceholder("Leave empty to capture the screen");
+        audioDevice.setPlaceholder("Leave empty to detect it automatically");
+        bitrate.setToolTipText("For example 6M or 4500k. A bare number means kbit/s.");
         size.setSelectedItem("1920x1080");
         fps.setSelectedItem("30");
         browse.addActionListener(e -> chooseFfmpeg());
@@ -132,6 +135,7 @@ final class OptionsForm extends JPanel {
         advancedCard.setLayout(new GridBagLayout());
         advancedCard.add(labeled("ffmpeg executable", ffmpegRow), cell(0, 0, 1, true));
         advancedCard.add(labeled("Custom ffmpeg input", input), cell(0, 1, 1, true));
+        advancedCard.add(labeled("Audio device", audioDevice), cell(0, 2, 1, true));
         advancedCard.setBorder(BorderFactory.createEmptyBorder(14, 16, 16, 16));
         return advancedCard;
     }
@@ -202,7 +206,11 @@ final class OptionsForm extends JPanel {
         if (o.fps < 1 || o.fps > 60) throw new IllegalArgumentException("The frame rate must be between 1 and 60.");
 
         String b = bitrate.getText().trim();
-        if (!BITRATE.matcher(b).matches()) throw new IllegalArgumentException("The bitrate must look like 3M or 2500k.");
+        try {
+            Bitrate.parseKbps(b);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("The bitrate must look like 6M or 4500k, between 100k and 100M.");
+        }
         o.bitrate = b;
 
         String f = ffmpeg.getText().trim();
@@ -211,8 +219,11 @@ final class OptionsForm extends JPanel {
         String in = input.getText().trim();
         o.input = in.isEmpty() ? null : in;
 
+        String device = audioDevice.getText().trim();
+        o.audioDevice = device.isEmpty() ? null : device;
+
         o.test = test.isSelected();
-        o.audio = audio.isSelected();
+        o.audio = audio.isSelected() || o.audioDevice != null;
         return o;
     }
 

@@ -1,4 +1,3 @@
-
 package main;
 
 import main.config.Options;
@@ -24,21 +23,19 @@ public final class Main {
                 StandardCharsets.UTF_8
         ));
 
-        // Richiesta di aiuto
         if (containsHelp(args)) {
             printHelp();
             return;
         }
 
-        // Nessun argomento: prova ad aprire la GUI
         if (args.length == 0) {
 
             if (GraphicsEnvironment.isHeadless()) {
                 System.out.println(
-                        "vCats: ambiente senza interfaccia grafica."
+                        "vCats: no graphical environment available."
                 );
                 System.out.println(
-                        "Avvia il programma specificando il PIN o l'IP della ViewBoard."
+                        "Start the program with the PIN or IP address of the ViewBoard."
                 );
                 System.out.println();
                 printHelp();
@@ -49,20 +46,19 @@ public final class Main {
             return;
         }
 
-        // Modalità terminale
         final Options options;
 
         try {
             options = Options.parse(args);
         } catch (IllegalArgumentException e) {
-            System.err.println("Errore: " + e.getMessage());
+            System.err.println("Error: " + e.getMessage());
             System.err.println();
             printHelp();
             return;
         }
 
         CastRunner runner = new CastRunner(phase -> {
-            System.out.println("[vCats] Stato: " + phase);
+            System.out.println("[vCats] State: " + phase);
         });
 
         Runtime.getRuntime().addShutdownHook(
@@ -86,55 +82,61 @@ public final class Main {
 
         System.out.println("vCats - ViewBoard Cast Sender");
         System.out.println();
-        System.out.println("Utilizzo:");
+        System.out.println("Usage:");
         System.out.println(
-                "  java -jar vcats.jar <PIN|IP> [opzioni]"
+                "  java -jar vcats.jar <PIN|IP> [options]"
         );
         System.out.println();
-        System.out.println("Opzioni disponibili:");
+        System.out.println("Options:");
         System.out.println(
-                "  --name <nome>       Nome del dispositivo"
+                "  --name <name>          Device name shown on the receiver"
         );
         System.out.println(
-                "  --type <tipo>       Tipo di connessione (manual/invited)"
+                "  --type <type>          Connection type (manual/invited)"
         );
         System.out.println(
-                "  --ffmpeg <percorso> Percorso dell'eseguibile FFmpeg"
+                "  --ffmpeg <path>        Path to the ffmpeg executable"
         );
         System.out.println(
-                "  --input <sorgente>  Sorgente multimediale"
+                "  --input <arguments>    Custom ffmpeg input arguments"
         );
         System.out.println(
-                "  --bitrate <valore>  Bitrate video (default: 6M)"
+                "  --bitrate <value>      Video bitrate, e.g. 6M or 4500k (default: 6M)"
         );
         System.out.println(
-                "  --fps <numero>      Frame rate (1-60)"
+                "  --fps <number>         Frame rate (1-60)"
         );
         System.out.println(
-                "  --size <WxH>        Risoluzione (default: 1920x1080)"
+                "  --size <WxH>           Resolution (default: 1920x1080)"
         );
         System.out.println(
-                "  --raw               Usa il trasporto TCP"
+                "  --raw                  Use the plain TCP transport"
         );
         System.out.println(
-                "  --ws                Usa il trasporto WebSocket"
+                "  --ws                   Use the WebSocket transport"
         );
         System.out.println(
-                "  --test              Modalità test"
+                "  --test                 Test mode (kitten image, test tone with --audio)"
         );
         System.out.println(
-                "  --audio             Abilita la condivisione audio (in sviluppo)"
+                "  --audio                Share system audio (experimental)"
         );
         System.out.println(
-                "  --help, -h          Mostra questo messaggio"
+                "  --audio-device <name>  Audio capture device; implies --audio"
+        );
+        System.out.println(
+                "  --help, -h             Show this message"
         );
         System.out.println();
-        System.out.println("Esempi:");
+        System.out.println("Examples:");
         System.out.println(
                 "  java -jar vcats.jar 192.168.1.100"
         );
         System.out.println(
                 "  java -jar vcats.jar 192.168.1.100 --fps 60 --size 1280x720"
+        );
+        System.out.println(
+                "  java -jar vcats.jar 192.168.1.100 --audio --bitrate 8M"
         );
         System.out.println(
                 "  java -jar vcats.jar 123456 --name vCats --ws"

@@ -1,5 +1,7 @@
 package main.ui.theme;
 
+import main.util.AppPaths;
+
 import javax.imageio.ImageIO;
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -8,14 +10,12 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class Logo {
     private static final String RESOURCE = "/assets/logo.png";
-    private static final Path FILE = Path.of("assets", "logo.png");
     private static final int[] ICON_SIZES = {16, 32, 48, 64, 128};
 
     private static boolean loaded;
@@ -56,7 +56,8 @@ public final class Logo {
         } catch (IOException ignored) {
         }
         try {
-            if (Files.isRegularFile(FILE)) return ImageIO.read(FILE.toFile());
+            Path file = AppPaths.find("assets/logo.png");
+            if (file != null) return ImageIO.read(file.toFile());
         } catch (IOException ignored) {
         }
         return null;

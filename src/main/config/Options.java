@@ -17,6 +17,7 @@ public final class Options {
     public String input;
     public String bitrate = "6M";
     public String transport = "auto";
+    public String audioDevice;
 
     public int width = 1920;
     public int height = 1080;
@@ -53,6 +54,7 @@ public final class Options {
 
                 case "--bitrate":
                     options.bitrate = requireValue(args, ++i, arg);
+                    Bitrate.parseKbps(options.bitrate);
                     break;
 
                 case "--fps":
@@ -66,6 +68,12 @@ public final class Options {
                 case "--audio":
                     options.audio = true;
                     break;
+
+                case "--audio-device":
+                    options.audioDevice = requireValue(args, ++i, arg);
+                    options.audio = true;
+                    break;
+
                 case "--test":
                     options.test = true;
                     break;

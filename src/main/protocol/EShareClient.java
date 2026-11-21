@@ -35,6 +35,8 @@ public final class EShareClient {
     private volatile Channel video;
     private volatile Channel audio;
 
+    private final Object audioLock = new Object();
+
     private int cseq;
     private volatile boolean closed;
 
@@ -352,6 +354,21 @@ public final class EShareClient {
         ));
 
         video.sendBinary(annexB);
+    }
+
+    public void sendAudio(byte[] pcm) {
+        Channel channel = audio;
+
+        if (closed || channelLost.get() || channel == null) {
+            throw new IllegalStateException(
+                    "EShareClient is not connected"
+            );
+        }
+
+        synchronized (audioLock) {
+            channel.sendBinary(header(pcm.length, Protocol.T_AUDIO));
+            channel.sendBinary(pcm);
+        }
     }
 
     private void ensureConnected() {
