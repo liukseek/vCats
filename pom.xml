@@ -17,7 +17,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>22</maven.compiler.release>
         <junit.version>5.12.2</junit.version>
-        <main.class>main.Main</main.class>
+        <main.class>io.github.vcats.Main</main.class>
     </properties>
 
     <dependencies>
@@ -34,11 +34,17 @@
 
     <build>
 
-        <sourceDirectory>src/main</sourceDirectory>
-
         <resources>
             <resource>
                 <directory>assets</directory>
+                <targetPath>assets</targetPath>
+            </resource>
+            <resource>
+                <directory>src/main/native/linux</directory>
+                <targetPath>assets</targetPath>
+            </resource>
+            <resource>
+                <directory>src/main/native/windows</directory>
                 <targetPath>assets</targetPath>
             </resource>
         </resources>

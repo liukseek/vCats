@@ -208,7 +208,7 @@ The control channel always uses WebSocket, regardless of the selected cast trans
 
 ## Project structure
 
-Java source files are under `src/main/`, while automated tests are under `src/test/`. Assets are stored in `assets/`.
+Java sources are under `src/main/java/io/github/vcats/`, automated tests under `src/test/java/`. Platform helpers (Swift, Python, C#) are under `src/main/native/`. Images are stored in `assets/`.
 
 ```text
 assets/
@@ -218,57 +218,26 @@ assets/
 
 src/
 ├── main/
-│   ├── Main.java
-│   ├── config/
-│   │   ├── Options.java
-│   │   └── Bitrate.java
-│   ├── util/
-│   │   ├── Log.java
-│   │   ├── AppPaths.java
-│   │   └── Processes.java
-│   ├── audio/
-│   │   ├── AudioCapture.java
-│   │   ├── AudioSource.java
-│   │   └── AudioPump.java
-│   ├── native/macos/
-│   │   └── SystemAudioCapture.swift
-│   ├── ui/
-│   │   ├── ControlWindow.java
-│   │   ├── OptionsForm.java
-│   │   ├── LogPanel.java
-│   │   ├── theme/
-│   │   │   ├── Theme.java
-│   │   │   └── Logo.java
-│   │   └── widget/
-│   ├── net/
-│   │   ├── Channel.java
-│   │   ├── WebSocketChannel.java
-│   │   ├── TcpChannel.java
-│   │   └── Transport.java
-│   ├── protocol/
-│   │   ├── Protocol.java
-│   │   ├── PinResolver.java
-│   │   ├── ControlClient.java
-│   │   └── EShareClient.java
-│   ├── media/
-│   │   ├── Ffmpeg.java
-│   │   ├── VideoPump.java
-│   │   ├── AuSplitter.java
-│   │   └── H264.java
-│   └── session/
-│       ├── CastRunner.java
-│       ├── CastSession.java
-│       └── Phase.java
+│   ├── java/io/github/vcats/
+│   │   ├── Main.java
+│   │   ├── config/        Options, Bitrate
+│   │   ├── util/          Log, AppPaths, Processes, MacPermissions
+│   │   ├── audio/         AudioCapture, AudioSource, AudioPump, LoopbackHelper
+│   │   ├── ui/            ControlWindow, OptionsForm, LogPanel, theme/, widget/
+│   │   ├── net/           Channel, WebSocketChannel, TcpChannel, Transport
+│   │   ├── protocol/      Protocol, PinResolver, ControlClient, EShareClient
+│   │   ├── media/         Ffmpeg, VideoPump, AuSplitter, H264
+│   │   └── session/       CastRunner, CastSession, Phase
+│   └── native/            Platform helpers that Java starts as separate processes
+│       ├── macos/         SystemAudioCapture.swift
+│       ├── linux/         vcats-portal.py   (Wayland screen capture)
+│       └── windows/       vcats-loopback.cs (system audio)
 └── test/
-    └── java/main/
-        ├── config/
-        │   └── OptionsTest.java
-        ├── media/
-        │   ├── AuSplitterTest.java
-        │   ├── FfmpegTest.java
-        │   └── H264Test.java
-        └── protocol/
-            └── PinResolverTest.java
+    └── java/io/github/vcats/
+        ├── config/        OptionsTest
+        ├── media/         AuSplitterTest, FfmpegTest, H264Test
+        ├── net/           RtspFramerTest, WebSocketChannelTest
+        └── protocol/      EShareClientTest, PinResolverTest
 ```
 
 ### Assets
