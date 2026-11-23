@@ -74,7 +74,7 @@ public final class PinResolver {
             );
 
             if (i >= 0) {
-                r += (long) (i * Math.pow(base, s.length() - n - 1));
+                r = r * base + i;
             }
         }
 

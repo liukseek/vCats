@@ -4,6 +4,7 @@ import main.config.Bitrate;
 import main.config.Options;
 import main.util.AppPaths;
 import main.util.Log;
+import main.util.MacPermissions;
 import main.util.Processes;
 
 import java.io.IOException;
@@ -19,6 +20,7 @@ import java.util.regex.Pattern;
 
 public final class Ffmpeg {
     private static final String TEST_IMAGE = "assets/test-kittens.jpg";
+    private static final String PORTAL_HELPER = "assets/vcats-portal.py";
 
     private static final long CHECK_TIMEOUT = 5;
     private static final long DEVICE_TIMEOUT = 5;
@@ -59,22 +61,135 @@ public final class Ffmpeg {
             );
         }
 
+        if (o.test || o.input != null) {
+            return;
+        }
+
         String os = os();
 
-        if (!o.test
-                && o.input == null
-                && !os.contains("win")
-                && !os.contains("mac")
-                && "wayland".equalsIgnoreCase(
-                        System.getenv("XDG_SESSION_TYPE")
-                )) {
+        if (os.contains("mac")) {
+            MacPermissions.ensureScreenCapture();
 
-            Log.info(
-                    "WARNING: Wayland session, x11grab may capture "
-                            + "only black or XWayland windows; "
-                            + "use --input or an X11 session"
-            );
+        } else if (isLinux() && isWayland()) {
+            if (portalHelper() == null) {
+                throw new IOException(
+                        "Wayland session detected but the screen capture "
+                                + "helper could not be loaded; use --input "
+                                + "or an X11 session"
+                );
+            }
+
+            verifyPortalDependencies();
         }
+    }
+
+    private static boolean isLinux() {
+        String os = os();
+        return !os.contains("win") && !os.contains("mac");
+    }
+
+    static boolean isWayland() {
+        return "wayland".equalsIgnoreCase(System.getenv("XDG_SESSION_TYPE"))
+                || System.getenv("WAYLAND_DISPLAY") != null;
+    }
+
+    /**
+     * On Wayland the screen can only be captured through the desktop portal
+     * (the system "share your screen" dialog), which ffmpeg cannot talk to.
+     * A small Python helper negotiates it and streams raw frames to ffmpeg.
+     */
+    static boolean usePortal(Options o) {
+        return !o.test
+                && o.input == null
+                && isLinux()
+                && isWayland()
+                && portalHelper() != null;
+    }
+
+    private static void verifyPortalDependencies() throws IOException,
+            InterruptedException {
+
+        Processes.Result result;
+
+        try {
+            result = Processes.run(
+                    List.of(
+                            "python3",
+                            "-c",
+                            "import gi; gi.require_version('Gst','1.0');"
+                                    + "from gi.repository import Gst;"
+                                    + "Gst.init(None);"
+                                    + "assert Gst.ElementFactory.find("
+                                    + "'pipewiresrc')"
+                    ),
+                    CHECK_TIMEOUT
+            );
+
+        } catch (IOException e) {
+            throw new IOException(PORTAL_HINT, e);
+        }
+
+        if (result.exitCode() != 0) {
+            throw new IOException(PORTAL_HINT);
+        }
+    }
+
+    private static final String PORTAL_HINT =
+            "Wayland screen capture needs python3, PyGObject, GStreamer with "
+                    + "the PipeWire plugin and xdg-desktop-portal. On "
+                    + "Debian/Ubuntu: sudo apt install python3-gi "
+                    + "gir1.2-gstreamer-1.0 gstreamer1.0-pipewire "
+                    + "gstreamer1.0-plugins-base gstreamer1.0-plugins-good "
+                    + "xdg-desktop-portal xdg-desktop-portal-gnome "
+                    + "(or -kde / -wlr for your desktop)";
+
+    private static Path portalHelperPath;
+
+    private static synchronized Path portalHelper() {
+        if (portalHelperPath != null && Files.isRegularFile(portalHelperPath)) {
+            return portalHelperPath;
+        }
+
+        try (InputStream in =
+                     Ffmpeg.class.getResourceAsStream("/" + PORTAL_HELPER)) {
+
+            if (in == null) {
+                return null;
+            }
+
+            Path temp = Files.createTempFile("vcats-portal-", ".py");
+            temp.toFile().deleteOnExit();
+            Files.copy(in, temp, StandardCopyOption.REPLACE_EXISTING);
+
+            portalHelperPath = temp;
+            return temp;
+
+        } catch (IOException e) {
+            Log.info("could not extract the Wayland helper: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /** Starts the capture pipeline; the last process is the H.264 encoder. */
+    public static List<Process> start(Options o) throws IOException {
+        ProcessBuilder encoder = new ProcessBuilder(command(o))
+                .redirectError(ProcessBuilder.Redirect.INHERIT);
+
+        if (!usePortal(o)) {
+            return List.of(encoder.start());
+        }
+
+        Log.info("Wayland: asking the desktop portal for a screen to share");
+
+        ProcessBuilder grabber = new ProcessBuilder(
+                "python3",
+                portalHelper().toAbsolutePath().toString(),
+                "" + even(o.width),
+                "" + even(o.height),
+                "" + o.fps
+        ).redirectError(ProcessBuilder.Redirect.INHERIT);
+
+        return ProcessBuilder.startPipeline(List.of(grabber, encoder));
     }
 
     public static List<String> command(Options o) {
@@ -131,6 +246,15 @@ public final class Ffmpeg {
 
         } else if (o.input != null) {
             c.addAll(parseInput(o.input));
+
+        } else if (usePortal(o)) {
+            c.addAll(List.of(
+                    "-f", "rawvideo",
+                    "-pix_fmt", "yuv420p",
+                    "-video_size", width + "x" + height,
+                    "-framerate", "" + o.fps,
+                    "-i", "pipe:0"
+            ));
 
         } else if (os.contains("win")) {
             c.addAll(List.of(

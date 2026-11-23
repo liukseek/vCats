@@ -17,6 +17,7 @@ import java.util.function.Consumer;
 public final class WebSocketChannel implements Channel, WebSocket.Listener {
 
     private static final int MAX_MESSAGE_SIZE = 4 * 1024 * 1024;
+    private static final long SEND_TIMEOUT_SECONDS = 10;
 
     private final String name;
     private final Consumer<String> onMessage;
@@ -78,10 +79,9 @@ public final class WebSocketChannel implements Channel, WebSocket.Listener {
         ensureOpen();
 
         try {
-            ws.sendText(message, true).join();
-        } catch (RuntimeException e) {
-            fail(e);
-            throw e;
+            ws.sendText(message, true).get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            throw sendFailed(e);
         }
     }
 
@@ -90,11 +90,23 @@ public final class WebSocketChannel implements Channel, WebSocket.Listener {
         ensureOpen();
 
         try {
-            ws.sendBinary(ByteBuffer.wrap(data), true).join();
-        } catch (RuntimeException e) {
-            fail(e);
-            throw e;
+            ws.sendBinary(ByteBuffer.wrap(data), true)
+                    .get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            throw sendFailed(e);
         }
+    }
+
+    private RuntimeException sendFailed(Exception e) {
+        if (e instanceof InterruptedException) {
+            Thread.currentThread().interrupt();
+        }
+
+        fail(e);
+
+        return e instanceof RuntimeException r
+                ? r
+                : new IllegalStateException("WebSocket send failed: " + e, e);
     }
 
     private void ensureOpen() {
@@ -124,7 +136,7 @@ public final class WebSocketChannel implements Channel, WebSocket.Listener {
             socket.sendClose(
                     WebSocket.NORMAL_CLOSURE,
                     "bye"
-            ).whenComplete((result, error) -> {
+            ).orTimeout(2, TimeUnit.SECONDS).whenComplete((result, error) -> {
                 if (error != null) {
                     socket.abort();
                 }

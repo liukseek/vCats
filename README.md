@@ -282,8 +282,9 @@ The logo and the test image are looked up in this order: the working directory, 
 | System | Capture backend | Notes |
 | --- | --- | --- |
 | Windows | `gdigrab` | Restart the IDE or terminal after installing ffmpeg so the new `PATH` is picked up |
-| macOS | `avfoundation` | The terminal or IDE needs Screen Recording permission. The screen device index is detected automatically |
-| Linux | `x11grab` | X11 and XWayland only. On Wayland use `--input` or switch to an X11 session |
+| macOS | `avfoundation` | The terminal or IDE needs Screen Recording permission. vCats checks it, triggers the system prompt and opens the settings pane; after granting it, quit and reopen that app. The screen device index is detected automatically |
+| Linux (X11) | `x11grab` | Works out of the box |
+| Linux (Wayland) | desktop portal + PipeWire | The system "share your screen" dialog appears at each start. Needs `python3-gi`, `gir1.2-gstreamer-1.0`, `gstreamer1.0-pipewire` and `xdg-desktop-portal` with the backend for your desktop |
 
 The captured screen is scaled to fit the chosen resolution without changing its aspect ratio, and padded with black bars when needed. Odd width or height values are rounded down to the next even number, as required by H.264.
 

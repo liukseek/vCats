@@ -37,11 +37,11 @@ public final class Options {
 
             switch (arg) {
                 case "--name":
-                    options.name = requireValue(args, ++i, arg);
+                    options.name = checkName(requireValue(args, ++i, arg));
                     break;
 
                 case "--type":
-                    options.type = requireValue(args, ++i, arg);
+                    options.type = checkType(requireValue(args, ++i, arg));
                     break;
 
                 case "--ffmpeg":
@@ -110,6 +110,30 @@ public final class Options {
         }
 
         return options;
+    }
+
+    public static String checkType(String type) {
+        if (!type.equals("manual") && !type.equals("invited")) {
+            throw new IllegalArgumentException(
+                    "Unknown share type: " + type
+                            + ". Use manual or invited"
+            );
+        }
+
+        return type;
+    }
+
+    /** The name goes into protocol headers, so control characters are out. */
+    public static String checkName(String name) {
+        for (int i = 0; i < name.length(); i++) {
+            if (Character.isISOControl(name.charAt(i))) {
+                throw new IllegalArgumentException(
+                        "The device name cannot contain control characters"
+                );
+            }
+        }
+
+        return name;
     }
 
     private static String requireValue(

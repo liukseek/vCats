@@ -71,7 +71,16 @@ final class AudioSource {
 
         c.addAll(List.of(inputArguments));
 
+        // Live devices deliver audio in irregular bursts. Without this the
+        // gaps and the clock drift are written straight to the output as
+        // clicks and crackles. aresample pads gaps with silence and nudges
+        // the stream by a few samples to keep a steady 48 kHz clock.
+        if (!List.of(inputArguments).contains("-af")) {
+            c.addAll(List.of("-af", "aresample=async=1000:first_pts=0"));
+        }
+
         c.addAll(List.of(
+                "-flush_packets", "1",
                 "-vn",
                 "-f", "s16le",
                 "-ar", "" + AudioCapture.SAMPLE_RATE,
@@ -98,14 +107,22 @@ final class AudioSource {
         Log.info("audio source: " + device);
 
         if (os.contains("mac")) {
-            return ffmpeg(o, "-f", "avfoundation", "-i", ":" + device);
+            return ffmpeg(
+                    o,
+                    "-f", "avfoundation",
+                    "-use_wallclock_as_timestamps", "1",
+                    "-thread_queue_size", "1024",
+                    "-i", ":" + device
+            );
         }
 
         if (os.contains("win")) {
             return ffmpeg(
                     o,
                     "-f", "dshow",
-                    "-audio_buffer_size", "50",
+                    "-use_wallclock_as_timestamps", "1",
+                    "-audio_buffer_size", "100",
+                    "-thread_queue_size", "1024",
                     "-i", "audio=" + device
             );
         }
@@ -113,6 +130,8 @@ final class AudioSource {
         return ffmpeg(
                 o,
                 "-f", "pulse",
+                "-use_wallclock_as_timestamps", "1",
+                "-thread_queue_size", "1024",
                 "-fragment_size", "" + AudioCapture.FRAME_BYTES,
                 "-i", device
         );

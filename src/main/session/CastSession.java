@@ -12,6 +12,7 @@ import main.protocol.EShareClient;
 import main.util.Log;
 
 import java.net.http.HttpClient;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -27,7 +28,7 @@ public final class CastSession {
 
     private volatile ControlClient control;
     private volatile EShareClient eshare;
-    private volatile Process ffmpeg;
+    private volatile List<Process> capture = List.of();
     private volatile AudioCapture audioCapture;
 
     public CastSession(Options o, HttpClient http, String host, Transport transport) {
@@ -77,6 +78,11 @@ public final class CastSession {
             EShareClient client = new EShareClient(host, o.name, transport);
             eshare = client;
 
+            if (stopped.get()) {
+                client.close();
+                return;
+            }
+
             client.connect(http, done::countDown);
 
             if (stopped.get()) return;
@@ -97,16 +103,15 @@ public final class CastSession {
 
             Log.info("screen share accepted, starting ffmpeg");
 
-            Process process = new ProcessBuilder(Ffmpeg.command(o))
-                    .redirectError(ProcessBuilder.Redirect.INHERIT)
-                    .start();
-
-            ffmpeg = process;
+            List<Process> processes = Ffmpeg.start(o);
+            capture = processes;
 
             if (stopped.get()) {
-                process.destroyForcibly();
+                processes.forEach(Process::destroyForcibly);
                 return;
             }
+
+            Process process = processes.getLast();
 
             Thread pump = new Thread(
                     new VideoPump(process, client, done::countDown),
@@ -163,10 +168,11 @@ public final class CastSession {
 
         done.countDown();
 
-        Process process = ffmpeg;
-        if (process != null) {
+        for (Process process : capture) {
             process.destroy();
+        }
 
+        for (Process process : capture) {
             try {
                 if (!process.waitFor(2, TimeUnit.SECONDS)) {
                     process.destroyForcibly();

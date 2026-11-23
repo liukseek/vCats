@@ -36,6 +36,7 @@ public final class EShareClient {
     private volatile Channel audio;
 
     private final Object audioLock = new Object();
+    private final Object videoLock = new Object();
 
     private int cseq;
     private volatile boolean closed;
@@ -345,15 +346,25 @@ public final class EShareClient {
         return buffer.array();
     }
 
-    public synchronized void sendVideo(byte[] annexB, boolean config) {
+    // Not synchronized on the client: a stalled network write must never
+    // keep close() or the OPTIONS keep-alive waiting for the monitor.
+    public void sendVideo(byte[] annexB, boolean config) {
         ensureConnected();
 
-        video.sendBinary(header(
-                annexB.length,
-                config ? Protocol.T_CONFIG : Protocol.T_VIDEO
-        ));
+        Channel channel = video;
 
-        video.sendBinary(annexB);
+        if (channel == null) {
+            throw new IllegalStateException("EShareClient is not connected");
+        }
+
+        synchronized (videoLock) {
+            channel.sendBinary(header(
+                    annexB.length,
+                    config ? Protocol.T_CONFIG : Protocol.T_VIDEO
+            ));
+
+            channel.sendBinary(annexB);
+        }
     }
 
     public void sendAudio(byte[] pcm) {
