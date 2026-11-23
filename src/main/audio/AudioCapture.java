@@ -5,6 +5,7 @@ import main.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -19,18 +20,23 @@ public final class AudioCapture implements AutoCloseable {
 
     private final AtomicBoolean running = new AtomicBoolean(false);
 
-    private Process process;
+    private List<Process> processes = List.of();
 
     public synchronized void start(Options options) throws IOException {
         if (running.get()) {
             return;
         }
 
-        List<String> command = AudioSource.command(options);
+        List<ProcessBuilder> builders = new ArrayList<>();
 
-        process = new ProcessBuilder(command)
-                .redirectError(ProcessBuilder.Redirect.INHERIT)
-                .start();
+        for (List<String> command : AudioSource.pipeline(options)) {
+            builders.add(new ProcessBuilder(command)
+                    .redirectError(ProcessBuilder.Redirect.INHERIT));
+        }
+
+        processes = builders.size() == 1
+                ? List.of(builders.get(0).start())
+                : ProcessBuilder.startPipeline(builders);
 
         running.set(true);
 
@@ -39,41 +45,43 @@ public final class AudioCapture implements AutoCloseable {
     }
 
     public synchronized InputStream getInputStream() {
-        if (process == null) {
+        if (processes.isEmpty()) {
             throw new IllegalStateException(
                     "Audio capture has not started"
             );
         }
 
-        return process.getInputStream();
+        return processes.getLast().getInputStream();
     }
 
     public synchronized boolean isRunning() {
         return running.get()
-                && process != null
-                && process.isAlive();
+                && !processes.isEmpty()
+                && processes.getLast().isAlive();
     }
 
     @Override
     public synchronized void close() {
         running.set(false);
 
-        if (process == null) {
+        if (processes.isEmpty()) {
             return;
         }
 
-        process.destroy();
+        processes.forEach(Process::destroy);
 
-        try {
-            if (!process.waitFor(2, TimeUnit.SECONDS)) {
+        for (Process process : processes) {
+            try {
+                if (!process.waitFor(2, TimeUnit.SECONDS)) {
+                    process.destroyForcibly();
+                }
+            } catch (InterruptedException e) {
                 process.destroyForcibly();
+                Thread.currentThread().interrupt();
             }
-        } catch (InterruptedException e) {
-            process.destroyForcibly();
-            Thread.currentThread().interrupt();
         }
 
-        process = null;
+        processes = List.of();
 
         Log.info("audio capture stopped");
     }

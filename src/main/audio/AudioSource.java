@@ -39,6 +39,42 @@ final class AudioSource {
         return System.getProperty("os.name").toLowerCase();
     }
 
+    /** One command, or a pipeline (capture helper piped into ffmpeg). */
+    static List<List<String>> pipeline(Options o) throws IOException {
+        if (o.audioDevice == null && !o.test && os().contains("win")) {
+            try {
+                return wasapiLoopback(o);
+
+            } catch (IOException e) {
+                Log.info("WASAPI loopback unavailable (" + e.getMessage()
+                        + "), looking for a DirectShow device");
+            }
+        }
+
+        return List.of(command(o));
+    }
+
+    private static List<List<String>> wasapiLoopback(Options o)
+            throws IOException {
+
+        Path helper = LoopbackHelper.executable();
+        LoopbackHelper.Format format = LoopbackHelper.query(helper);
+
+        Log.info("audio source: system output (WASAPI loopback, "
+                + format.rate() + " Hz, " + format.channels() + " ch)");
+
+        return List.of(
+                List.of(helper.toString()),
+                ffmpeg(
+                        o,
+                        "-f", format.ffmpegFormat(),
+                        "-ar", "" + format.rate(),
+                        "-ac", "" + format.channels(),
+                        "-i", "pipe:0"
+                )
+        );
+    }
+
     static List<String> command(Options o) throws IOException {
         if (o.audioDevice != null) {
             return fromDevice(o, o.audioDevice);

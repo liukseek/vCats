@@ -294,7 +294,7 @@ Audio is optional and experimental. It is enabled with `--audio` (or the "Share 
 
 | System | Source used | Requirements |
 | --- | --- | --- |
-| Windows | ffmpeg `dshow`, on a loopback device found automatically (Stereo Mix, virtual cable and similar) | A recording device that captures system output. Enable "Stereo Mix" in Sound settings (Recording tab, show disabled devices) or install a virtual audio cable |
+| Windows | WASAPI loopback of the default output through a small helper (built automatically with the `csc.exe` that ships with Windows); falls back to an ffmpeg `dshow` loopback device | Nothing to install. Silence is sent while nothing is playing, so the stream keeps a steady clock |
 | macOS | ScreenCaptureKit helper `native/macos/vcats-audio` if present, otherwise ffmpeg `avfoundation` on a loopback device | macOS 13 or later and Screen Recording permission for the helper, or a loopback device such as BlackHole |
 | Linux | ffmpeg `pulse` on the monitor of the default output | PulseAudio or PipeWire with the PulseAudio compatibility layer |
 
