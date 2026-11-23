@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.http.HttpClient;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public enum Transport {
@@ -89,9 +90,14 @@ public enum Transport {
     }
 
     private static boolean portsOpen(String host, Transport transport) {
-        return tcpOpen(host, transport.rtspPort)
-                && tcpOpen(host, transport.videoPort)
-                && tcpOpen(host, transport.audioPort);
+        var rtsp = CompletableFuture.supplyAsync(
+                () -> tcpOpen(host, transport.rtspPort));
+        var video = CompletableFuture.supplyAsync(
+                () -> tcpOpen(host, transport.videoPort));
+        var audio = CompletableFuture.supplyAsync(
+                () -> tcpOpen(host, transport.audioPort));
+
+        return rtsp.join() && video.join() && audio.join();
     }
 
     private static boolean tcpOpen(String host, int port) {

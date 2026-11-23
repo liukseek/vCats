@@ -188,7 +188,7 @@ final class OptionsForm extends JPanel {
         o.target = t;
 
         String n = name.getText().trim();
-        if (!n.isEmpty()) o.name = n;
+        if (!n.isEmpty()) o.name = Options.checkName(n);
 
         o.type = ((Choice) Objects.requireNonNull(type.getSelectedItem())).value();
         o.transport = ((Choice) Objects.requireNonNull(transport.getSelectedItem())).value();
