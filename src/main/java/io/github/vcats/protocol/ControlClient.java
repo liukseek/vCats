@@ -34,8 +34,6 @@ public final class ControlClient {
     private final AtomicBoolean started = new AtomicBoolean();
 
     private volatile long pongAt = System.nanoTime();
-    private volatile String serverName = "";
-    private volatile boolean moderator;
 
     public ControlClient(
             HttpClient http,
@@ -143,7 +141,7 @@ public final class ControlClient {
         Map<String, String> properties = parseProperties(message);
 
         if (properties.containsKey("server_name")) {
-            serverName = properties.getOrDefault("server_name", "");
+            String serverName = properties.getOrDefault("server_name", "");
 
             long features = 0;
 
@@ -154,7 +152,7 @@ public final class ControlClient {
             } catch (NumberFormatException ignored) {
             }
 
-            moderator = ((features >> 9) & 1) == 1
+            boolean moderator = ((features >> 9) & 1) == 1
                     && ((features >> 14) & 1) == 1;
 
             Log.info(

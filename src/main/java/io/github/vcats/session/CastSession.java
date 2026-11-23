@@ -12,7 +12,6 @@ import io.github.vcats.protocol.EShareClient;
 import io.github.vcats.util.Log;
 
 import java.net.http.HttpClient;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,7 +27,7 @@ public final class CastSession {
 
     private volatile ControlClient control;
     private volatile EShareClient eshare;
-    private volatile List<Process> capture = List.of();
+    private volatile Ffmpeg.Capture capture;
     private volatile AudioCapture audioCapture;
 
     public CastSession(Options o, HttpClient http, String host, Transport transport) {
@@ -103,15 +102,15 @@ public final class CastSession {
 
             Log.info("screen share accepted, starting ffmpeg");
 
-            List<Process> processes = Ffmpeg.start(o);
-            capture = processes;
+            Ffmpeg.Capture started = Ffmpeg.start(o);
+            capture = started;
 
             if (stopped.get()) {
-                processes.forEach(Process::destroyForcibly);
+                started.close();
                 return;
             }
 
-            Process process = processes.getLast();
+            Process process = started.encoder();
 
             Thread pump = new Thread(
                     new VideoPump(process, client, done::countDown),
@@ -168,20 +167,8 @@ public final class CastSession {
 
         done.countDown();
 
-        for (Process process : capture) {
-            process.destroy();
-        }
-
-        for (Process process : capture) {
-            try {
-                if (!process.waitFor(2, TimeUnit.SECONDS)) {
-                    process.destroyForcibly();
-                }
-            } catch (InterruptedException e) {
-                process.destroyForcibly();
-                Thread.currentThread().interrupt();
-            }
-        }
+        Ffmpeg.Capture running = capture;
+        if (running != null) running.close();
 
         AudioCapture capture = audioCapture;
         if (capture != null) capture.close();

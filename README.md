@@ -208,7 +208,7 @@ The control channel always uses WebSocket, regardless of the selected cast trans
 
 ## Project structure
 
-Java sources are under `src/main/java/io/github/vcats/`, automated tests under `src/test/java/`. Platform helpers (Swift, Python, C#) are under `src/main/native/`. Images are stored in `assets/`.
+Java sources are under `src/main/java/io/github/vcats/`, automated tests under `src/test/java/`. Platform helpers (Swift, C#) are under `src/main/native/`. Images are stored in `assets/`.
 
 ```text
 assets/
@@ -226,11 +226,10 @@ src/
 │   │   ├── ui/            ControlWindow, OptionsForm, LogPanel, theme/, widget/
 │   │   ├── net/           Channel, WebSocketChannel, TcpChannel, Transport
 │   │   ├── protocol/      Protocol, PinResolver, ControlClient, EShareClient
-│   │   ├── media/         Ffmpeg, VideoPump, AuSplitter, H264
+│   │   ├── media/         Ffmpeg, WaylandCapture, VideoPump, AuSplitter, H264
 │   │   └── session/       CastRunner, CastSession, Phase
 │   └── native/            Platform helpers that Java starts as separate processes
 │       ├── macos/         SystemAudioCapture.swift
-│       ├── linux/         vcats-portal.py   (Wayland screen capture)
 │       └── windows/       vcats-loopback.cs (system audio)
 └── test/
     └── java/io/github/vcats/
@@ -253,7 +252,7 @@ The logo and the test image are looked up in this order: the working directory, 
 | Windows | `gdigrab` | Restart the IDE or terminal after installing ffmpeg so the new `PATH` is picked up |
 | macOS | `avfoundation` | The terminal or IDE needs Screen Recording permission. vCats checks it, triggers the system prompt and opens the settings pane; after granting it, quit and reopen that app. The screen device index is detected automatically |
 | Linux (X11) | `x11grab` | Works out of the box |
-| Linux (Wayland) | desktop portal + PipeWire | The system "share your screen" dialog appears at each start. Needs `python3-gi`, `gir1.2-gstreamer-1.0`, `gstreamer1.0-pipewire` and `xdg-desktop-portal` with the backend for your desktop |
+| Linux (Wayland) | desktop portal + PipeWire, in Java (`java.lang.foreign`) | The system "share your screen" dialog appears at each start. Needs `libglib2.0-0`, `libgstreamer1.0-0`, `gstreamer1.0-pipewire`, `gstreamer1.0-plugins-base` and `xdg-desktop-portal` with the backend for your desktop |
 
 The captured screen is scaled to fit the chosen resolution without changing its aspect ratio, and padded with black bars when needed. Odd width or height values are rounded down to the next even number, as required by H.264.
 

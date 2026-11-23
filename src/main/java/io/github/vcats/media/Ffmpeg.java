@@ -15,12 +15,12 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class Ffmpeg {
     private static final String TEST_IMAGE = "assets/test-kittens.jpg";
-    private static final String PORTAL_HELPER = "assets/vcats-portal.py";
 
     private static final long CHECK_TIMEOUT = 5;
     private static final long DEVICE_TIMEOUT = 5;
@@ -71,15 +71,11 @@ public final class Ffmpeg {
             MacPermissions.ensureScreenCapture();
 
         } else if (isLinux() && isWayland()) {
-            if (portalHelper() == null) {
-                throw new IOException(
-                        "Wayland session detected but the screen capture "
-                                + "helper could not be loaded; use --input "
-                                + "or an X11 session"
-                );
-            }
+            String problem = WaylandCapture.unavailableReason();
 
-            verifyPortalDependencies();
+            if (problem != null) {
+                throw new IOException(problem);
+            }
         }
     }
 
@@ -96,103 +92,82 @@ public final class Ffmpeg {
     /**
      * On Wayland the screen can only be captured through the desktop portal
      * (the system "share your screen" dialog), which ffmpeg cannot talk to.
-     * A small Python helper negotiates it and streams raw frames to ffmpeg.
+     * {@link WaylandCapture} negotiates it and serves raw frames to ffmpeg.
      */
     static boolean usePortal(Options o) {
         return !o.test
                 && o.input == null
                 && isLinux()
-                && isWayland()
-                && portalHelper() != null;
+                && isWayland();
     }
 
-    private static void verifyPortalDependencies() throws IOException,
-            InterruptedException {
+    /** Everything started for one share: capture helper(s) and the encoder. */
+    public static final class Capture implements AutoCloseable {
+        private final List<Process> processes;
+        private final WaylandCapture wayland;
 
-        Processes.Result result;
-
-        try {
-            result = Processes.run(
-                    List.of(
-                            "python3",
-                            "-c",
-                            "import gi; gi.require_version('Gst','1.0');"
-                                    + "from gi.repository import Gst;"
-                                    + "Gst.init(None);"
-                                    + "assert Gst.ElementFactory.find("
-                                    + "'pipewiresrc')"
-                    ),
-                    CHECK_TIMEOUT
-            );
-
-        } catch (IOException e) {
-            throw new IOException(PORTAL_HINT, e);
+        Capture(List<Process> processes, WaylandCapture wayland) {
+            this.processes = processes;
+            this.wayland = wayland;
         }
 
-        if (result.exitCode() != 0) {
-            throw new IOException(PORTAL_HINT);
-        }
-    }
-
-    private static final String PORTAL_HINT =
-            "Wayland screen capture needs python3, PyGObject, GStreamer with "
-                    + "the PipeWire plugin and xdg-desktop-portal. On "
-                    + "Debian/Ubuntu: sudo apt install python3-gi "
-                    + "gir1.2-gstreamer-1.0 gstreamer1.0-pipewire "
-                    + "gstreamer1.0-plugins-base gstreamer1.0-plugins-good "
-                    + "xdg-desktop-portal xdg-desktop-portal-gnome "
-                    + "(or -kde / -wlr for your desktop)";
-
-    private static Path portalHelperPath;
-
-    private static synchronized Path portalHelper() {
-        if (portalHelperPath != null && Files.isRegularFile(portalHelperPath)) {
-            return portalHelperPath;
+        /** The ffmpeg process whose stdout is the H.264 stream. */
+        public Process encoder() {
+            return processes.getLast();
         }
 
-        try (InputStream in =
-                     Ffmpeg.class.getResourceAsStream("/" + PORTAL_HELPER)) {
+        @Override
+        public void close() {
+            processes.forEach(Process::destroy);
 
-            if (in == null) {
-                return null;
+            for (Process process : processes) {
+                try {
+                    if (!process.waitFor(2, TimeUnit.SECONDS)) {
+                        process.destroyForcibly();
+                    }
+                } catch (InterruptedException e) {
+                    process.destroyForcibly();
+                    Thread.currentThread().interrupt();
+                }
             }
 
-            Path temp = Files.createTempFile("vcats-portal-", ".py");
-            temp.toFile().deleteOnExit();
-            Files.copy(in, temp, StandardCopyOption.REPLACE_EXISTING);
-
-            portalHelperPath = temp;
-            return temp;
-
-        } catch (IOException e) {
-            Log.info("could not extract the Wayland helper: " + e.getMessage());
-            return null;
+            if (wayland != null) {
+                wayland.close();
+            }
         }
     }
 
-    /** Starts the capture pipeline; the last process is the H.264 encoder. */
-    public static List<Process> start(Options o) throws IOException {
-        ProcessBuilder encoder = new ProcessBuilder(command(o))
-                .redirectError(ProcessBuilder.Redirect.INHERIT);
+    /** Starts the capture and the ffmpeg encoder. */
+    public static Capture start(Options o) throws IOException {
+        WaylandCapture wayland = null;
+        String rawInput = null;
 
-        if (!usePortal(o)) {
-            return List.of(encoder.start());
+        if (usePortal(o)) {
+            wayland = WaylandCapture.start(even(o.width), even(o.height), o.fps);
+            rawInput = "tcp://127.0.0.1:" + wayland.port();
         }
 
-        Log.info("Wayland: asking the desktop portal for a screen to share");
+        try {
+            Process encoder = new ProcessBuilder(command(o, rawInput))
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .start();
 
-        ProcessBuilder grabber = new ProcessBuilder(
-                "python3",
-                portalHelper().toAbsolutePath().toString(),
-                "" + even(o.width),
-                "" + even(o.height),
-                "" + o.fps
-        ).redirectError(ProcessBuilder.Redirect.INHERIT);
+            return new Capture(List.of(encoder), wayland);
 
-        return ProcessBuilder.startPipeline(List.of(grabber, encoder));
+        } catch (IOException | RuntimeException e) {
+            if (wayland != null) {
+                wayland.close();
+            }
+
+            throw e;
+        }
     }
 
     public static List<String> command(Options o) {
+        return command(o, null);
+    }
+
+    static List<String> command(Options o, String rawInput) {
         List<String> c = new ArrayList<>(
                 List.of(
                         o.ffmpeg,
@@ -247,13 +222,13 @@ public final class Ffmpeg {
         } else if (o.input != null) {
             c.addAll(parseInput(o.input));
 
-        } else if (usePortal(o)) {
+        } else if (rawInput != null) {
             c.addAll(List.of(
                     "-f", "rawvideo",
                     "-pix_fmt", "yuv420p",
                     "-video_size", width + "x" + height,
                     "-framerate", "" + o.fps,
-                    "-i", "pipe:0"
+                    "-i", rawInput
             ));
 
         } else if (os.contains("win")) {

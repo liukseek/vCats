@@ -40,10 +40,6 @@
                 <targetPath>assets</targetPath>
             </resource>
             <resource>
-                <directory>src/main/native/linux</directory>
-                <targetPath>assets</targetPath>
-            </resource>
-            <resource>
                 <directory>src/main/native/windows</directory>
                 <targetPath>assets</targetPath>
             </resource>
