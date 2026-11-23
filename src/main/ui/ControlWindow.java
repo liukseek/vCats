@@ -83,9 +83,13 @@ public final class ControlWindow extends JFrame {
             @Override
             public void windowClosing(WindowEvent e) {
                 CastRunner r = runner;
-                if (r != null) r.shutdown();
                 dispose();
-                System.exit(0);
+                Thread exit = new Thread(() -> {
+                    if (r != null) r.shutdown();
+                    System.exit(0);
+                }, "vcast-exit");
+                exit.setDaemon(true);
+                exit.start();
             }
         });
 
@@ -198,7 +202,9 @@ public final class ControlWindow extends JFrame {
         if (r == null) return;
         stop.setEnabled(false);
         status.show(StatusPill.Level.BUSY, "Stopping...");
-        r.stop();
+        Thread stopper = new Thread(r::stop, "vcast-stop");
+        stopper.setDaemon(true);
+        stopper.start();
     }
 
     private void setRunning(boolean running) {

@@ -54,6 +54,7 @@ public final class Main {
             System.err.println("Error: " + e.getMessage());
             System.err.println();
             printHelp();
+            System.exit(2);
             return;
         }
 
