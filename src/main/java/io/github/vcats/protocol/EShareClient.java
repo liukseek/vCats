@@ -18,6 +18,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -108,7 +110,7 @@ public final class EShareClient {
                     http,
                     host,
                     transport.videoPort,
-                    m -> {},
+                    replyLogger("VIDEO"),
                     () -> notifyLost(onLost)
             );
 
@@ -123,7 +125,7 @@ public final class EShareClient {
                     http,
                     host,
                     transport.audioPort,
-                    m -> {},
+                    replyLogger("AUDIO"),
                     () -> notifyLost(onLost)
             );
 
@@ -166,6 +168,27 @@ public final class EShareClient {
 
             throw e;
         }
+    }
+
+    /** Logs the first few messages the board sends on a media channel. */
+    private static Consumer<String> replyLogger(String channel) {
+        AtomicInteger seen = new AtomicInteger();
+
+        return message -> {
+            if (seen.incrementAndGet() > 10) {
+                return;
+            }
+
+            StringBuilder text = new StringBuilder();
+
+            for (int i = 0; i < message.length() && i < 160; i++) {
+                char c = message.charAt(i);
+                text.append(c >= 32 && c < 127 ? c : '.');
+            }
+
+            Log.info("EShare: " + channel + " channel <- "
+                    + message.length() + " bytes: " + text);
+        };
     }
 
     private void checkConnection() throws IOException {

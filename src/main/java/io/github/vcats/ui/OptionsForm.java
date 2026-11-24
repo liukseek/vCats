@@ -1,5 +1,6 @@
 package io.github.vcats.ui;
 
+import io.github.vcats.audio.AudioFormat;
 import io.github.vcats.config.Bitrate;
 import io.github.vcats.config.Options;
 import io.github.vcats.ui.theme.Theme;
@@ -54,6 +55,11 @@ final class OptionsForm extends JPanel {
     private final FlatTextField bitrate = new FlatTextField(new Options().bitrate);
     private final ToggleSwitch test = new ToggleSwitch("Send the test image (kittens) instead of the screen");
     private final ToggleSwitch audio = new ToggleSwitch("Share system audio");
+    private final FlatComboBox<Choice> audioFormat = new FlatComboBox<>(new Choice[]{
+            new Choice("pcm", "PCM 48 kHz stereo (default)"),
+            new Choice("pcm44", "PCM 44.1 kHz stereo"),
+            new Choice("mono", "PCM 48 kHz mono"),
+            new Choice("aac", "AAC 48 kHz stereo")}, false);
     private final FlatTextField audioDevice = new FlatTextField("");
     private final FlatTextField ffmpeg = new FlatTextField("ffmpeg");
     private final FlatButton browse = new FlatButton("Browse", FlatButton.Variant.GHOST);
@@ -62,7 +68,7 @@ final class OptionsForm extends JPanel {
     private final ChevronIcon chevron = new ChevronIcon();
     private final Card advancedCard = new Card();
 
-    private final List<JComponent> controls = List.of(target, name, type, transport, size, fps, bitrate, test, audio, audioDevice, ffmpeg, browse, input);
+    private final List<JComponent> controls = List.of(target, name, type, transport, size, fps, bitrate, test, audio, audioFormat, audioDevice, ffmpeg, browse, input);
 
     OptionsForm(IntConsumer onHeightChange) {
         setOpaque(false);
@@ -136,6 +142,7 @@ final class OptionsForm extends JPanel {
         advancedCard.add(labeled("ffmpeg executable", ffmpegRow), cell(0, 0, 1, true));
         advancedCard.add(labeled("Custom ffmpeg input", input), cell(0, 1, 1, true));
         advancedCard.add(labeled("Audio device", audioDevice), cell(0, 2, 1, true));
+        advancedCard.add(labeled("Audio format (try another if the board stays silent)", audioFormat), cell(0, 3, 1, true));
         advancedCard.setBorder(BorderFactory.createEmptyBorder(14, 16, 16, 16));
         return advancedCard;
     }
@@ -221,6 +228,8 @@ final class OptionsForm extends JPanel {
 
         String device = audioDevice.getText().trim();
         o.audioDevice = device.isEmpty() ? null : device;
+
+        o.audioFormat = AudioFormat.parse(((Choice) Objects.requireNonNull(audioFormat.getSelectedItem())).value());
 
         o.test = test.isSelected();
         o.audio = audio.isSelected() || o.audioDevice != null;

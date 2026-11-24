@@ -1,6 +1,8 @@
 
 package io.github.vcats.config;
 
+import io.github.vcats.audio.AudioFormat;
+
 import java.net.InetAddress;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,6 +24,8 @@ public final class Options {
     public int width = 1920;
     public int height = 1080;
     public int fps = 30;
+
+    public AudioFormat audioFormat = AudioFormat.PCM;
 
     public boolean test;
     public boolean audio;
@@ -71,6 +75,13 @@ public final class Options {
 
                 case "--audio-device":
                     options.audioDevice = requireValue(args, ++i, arg);
+                    options.audio = true;
+                    break;
+
+                case "--audio-format":
+                    options.audioFormat = AudioFormat.parse(
+                            requireValue(args, ++i, arg)
+                    );
                     options.audio = true;
                     break;
 

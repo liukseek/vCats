@@ -268,6 +268,8 @@ Audio is optional and experimental. It is enabled with `--audio` (or the "Share 
 
 Use `--audio-device NAME` to choose a device explicitly: a DirectShow device name on Windows, an AVFoundation audio device index or name on macOS, a PulseAudio source name on Linux (for example `alsa_output.pci-0000_00_1f.3.analog-stereo.monitor`). On Windows the device names are listed by `ffmpeg -list_devices true -f dshow -i dummy`, on macOS by `ffmpeg -f avfoundation -list_devices true -i ""`, on Linux by `pactl list short sources`.
 
+If the board stays silent, the audio format it expects may differ from the default. Try `--audio-format` (or "Audio format" in the advanced settings): `pcm` (48 kHz stereo, default), `pcm44` (44.1 kHz), `mono` or `aac` (AAC-LC in ADTS frames). While sharing, the log prints every 5 seconds how many audio packets were sent and the peak level (`peak level 0%` means the capture itself is silent), and the first messages the board sends back on the audio and video channels, which usually show whether it accepted the stream.
+
 With `--test --audio` a quiet 440 Hz tone is sent instead of the system audio, to check the audio path without any capture device.
 
 To build the macOS helper:

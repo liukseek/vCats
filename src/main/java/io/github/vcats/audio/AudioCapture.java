@@ -11,13 +11,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class AudioCapture implements AutoCloseable {
-    public static final int SAMPLE_RATE = 48_000;
-    public static final int CHANNELS = 2;
-    public static final int BYTES_PER_SAMPLE = 2;
-    public static final int FRAME_MS = 20;
-    public static final int FRAME_BYTES =
-            SAMPLE_RATE / 1000 * FRAME_MS * CHANNELS * BYTES_PER_SAMPLE;
-
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     private List<Process> processes = List.of();
@@ -40,8 +33,9 @@ public final class AudioCapture implements AutoCloseable {
 
         running.set(true);
 
-        Log.info("audio capture started: PCM "
-                + SAMPLE_RATE + " Hz, " + CHANNELS + " channels, 16-bit");
+        Log.info("audio capture started: "
+                + options.audioFormat.id + " (" + options.audioFormat.sampleRate
+                + " Hz, " + options.audioFormat.channels + " ch)");
     }
 
     public synchronized InputStream getInputStream() {

@@ -126,6 +126,9 @@ public final class Main {
                 "  --audio-device <name>  Audio capture device; implies --audio"
         );
         System.out.println(
+                "  --audio-format <f>     pcm (default), pcm44, mono or aac; implies --audio"
+        );
+        System.out.println(
                 "  --help, -h             Show this message"
         );
         System.out.println();

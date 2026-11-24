@@ -115,12 +115,18 @@ final class AudioSource {
             c.addAll(List.of("-af", "aresample=async=1000:first_pts=0"));
         }
 
+        AudioFormat format = o.audioFormat;
+
+        c.addAll(List.of("-flush_packets", "1", "-vn"));
+
+        if (format.adts) {
+            c.addAll(List.of("-c:a", "aac", "-b:a", "128k"));
+        }
+
         c.addAll(List.of(
-                "-flush_packets", "1",
-                "-vn",
-                "-f", "s16le",
-                "-ar", "" + AudioCapture.SAMPLE_RATE,
-                "-ac", "" + AudioCapture.CHANNELS,
+                "-ar", "" + format.sampleRate,
+                "-ac", "" + format.channels,
+                "-f", format.adts ? "adts" : "s16le",
                 "pipe:1"
         ));
 
@@ -132,7 +138,7 @@ final class AudioSource {
                 o,
                 "-re",
                 "-f", "lavfi",
-                "-i", "sine=frequency=440:sample_rate=" + AudioCapture.SAMPLE_RATE,
+                "-i", "sine=frequency=440:sample_rate=" + o.audioFormat.sampleRate,
                 "-af", "volume=0.1"
         );
     }
@@ -168,7 +174,7 @@ final class AudioSource {
                 "-f", "pulse",
                 "-use_wallclock_as_timestamps", "1",
                 "-thread_queue_size", "1024",
-                "-fragment_size", "" + AudioCapture.FRAME_BYTES,
+                "-fragment_size", "" + AudioFormat.PCM.frameBytes(),
                 "-i", device
         );
     }

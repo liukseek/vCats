@@ -152,6 +152,7 @@ public final class CastSession {
         Thread pump = new Thread(
                 new AudioPump(
                         capture.getInputStream(),
+                        o.audioFormat,
                         client::sendAudio,
                         () -> Log.info("audio stream ended")
                 ),
