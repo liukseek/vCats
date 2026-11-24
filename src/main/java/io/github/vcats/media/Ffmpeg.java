@@ -182,7 +182,11 @@ public final class Ffmpeg {
         int width = even(o.width);
         int height = even(o.height);
 
-        String filter = fitFilter(width, height);
+        // Live captures (avfoundation especially) can deliver far more frames
+        // than asked for; the h264 muxer keeps every one, so the board gets
+        // 100+ fps and cannot keep up. Dropping to the target rate first also
+        // saves the scaling work on frames that would be thrown away.
+        String filter = "fps=" + o.fps + "," + fitFilter(width, height);
 
         Path image = o.test ? testImage() : null;
 
