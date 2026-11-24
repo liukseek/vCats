@@ -25,10 +25,11 @@ public final class Options {
     public int height = 1080;
     public int fps = 30;
 
-    public AudioFormat audioFormat = AudioFormat.PCM;
+    public AudioFormat audioFormat = AudioFormat.PCM24;
 
     public boolean test;
     public boolean audio;
+    public boolean audioCycle;
 
     public Options() {
     }
@@ -85,6 +86,11 @@ public final class Options {
                     options.audio = true;
                     break;
 
+                case "--audio-cycle":
+                    options.audioCycle = true;
+                    options.audio = true;
+                    break;
+
                 case "--test":
                     options.test = true;
                     break;
@@ -121,6 +127,26 @@ public final class Options {
         }
 
         return options;
+    }
+
+    /** A copy that sends a test tone in the given audio format. */
+    public Options toneTrial(AudioFormat format) {
+        Options copy = new Options();
+        copy.target = target;
+        copy.name = name;
+        copy.type = type;
+        copy.ffmpeg = ffmpeg;
+        copy.input = input;
+        copy.bitrate = bitrate;
+        copy.transport = transport;
+        copy.audioDevice = null;
+        copy.width = width;
+        copy.height = height;
+        copy.fps = fps;
+        copy.test = true;
+        copy.audio = true;
+        copy.audioFormat = format;
+        return copy;
     }
 
     public static String checkType(String type) {

@@ -48,6 +48,9 @@ class AudioPumpTest {
 
     @Test
     void frameSizesFollowTheFormat() {
+        assertEquals(960, AudioFormat.PCM24.frameBytes());
+        assertEquals(25123, AudioFormat.PCM24.rawPort);
+        assertEquals(0, AudioFormat.PCM.rawPort);
         assertEquals(3840, AudioFormat.PCM.frameBytes());
         assertEquals(3528, AudioFormat.PCM44.frameBytes());
         assertEquals(1920, AudioFormat.MONO.frameBytes());

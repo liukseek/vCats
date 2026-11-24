@@ -56,7 +56,8 @@ final class OptionsForm extends JPanel {
     private final ToggleSwitch test = new ToggleSwitch("Send the test image (kittens) instead of the screen");
     private final ToggleSwitch audio = new ToggleSwitch("Share system audio");
     private final FlatComboBox<Choice> audioFormat = new FlatComboBox<>(new Choice[]{
-            new Choice("pcm", "PCM 48 kHz stereo (default)"),
+            new Choice("pcm24", "PCM 24 kHz mono, board port 25123 (default)"),
+            new Choice("pcm", "PCM 48 kHz stereo"),
             new Choice("pcm44", "PCM 44.1 kHz stereo"),
             new Choice("mono", "PCM 48 kHz mono"),
             new Choice("aac", "AAC 48 kHz stereo")}, false);

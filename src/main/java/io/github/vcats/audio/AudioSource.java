@@ -139,7 +139,7 @@ final class AudioSource {
                 "-re",
                 "-f", "lavfi",
                 "-i", "sine=frequency=440:sample_rate=" + o.audioFormat.sampleRate,
-                "-af", "volume=0.1"
+                "-af", "volume=3.0"
         );
     }
 
