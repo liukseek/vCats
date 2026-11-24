@@ -208,7 +208,7 @@ The control channel always uses WebSocket, regardless of the selected cast trans
 
 ## Project structure
 
-Java source files are under `src/main/`, while automated tests are under `src/test/`. Assets are stored in `assets/`.
+Java sources are under `src/main/java/io/github/vcats/`, automated tests under `src/test/java/`. Platform helpers (Swift, C#) are under `src/main/native/`. Images are stored in `assets/`.
 
 ```text
 assets/
@@ -218,57 +218,25 @@ assets/
 
 src/
 ├── main/
-│   ├── Main.java
-│   ├── config/
-│   │   ├── Options.java
-│   │   └── Bitrate.java
-│   ├── util/
-│   │   ├── Log.java
-│   │   ├── AppPaths.java
-│   │   └── Processes.java
-│   ├── audio/
-│   │   ├── AudioCapture.java
-│   │   ├── AudioSource.java
-│   │   └── AudioPump.java
-│   ├── native/macos/
-│   │   └── SystemAudioCapture.swift
-│   ├── ui/
-│   │   ├── ControlWindow.java
-│   │   ├── OptionsForm.java
-│   │   ├── LogPanel.java
-│   │   ├── theme/
-│   │   │   ├── Theme.java
-│   │   │   └── Logo.java
-│   │   └── widget/
-│   ├── net/
-│   │   ├── Channel.java
-│   │   ├── WebSocketChannel.java
-│   │   ├── TcpChannel.java
-│   │   └── Transport.java
-│   ├── protocol/
-│   │   ├── Protocol.java
-│   │   ├── PinResolver.java
-│   │   ├── ControlClient.java
-│   │   └── EShareClient.java
-│   ├── media/
-│   │   ├── Ffmpeg.java
-│   │   ├── VideoPump.java
-│   │   ├── AuSplitter.java
-│   │   └── H264.java
-│   └── session/
-│       ├── CastRunner.java
-│       ├── CastSession.java
-│       └── Phase.java
+│   ├── java/io/github/vcats/
+│   │   ├── Main.java
+│   │   ├── config/        Options, Bitrate
+│   │   ├── util/          Log, AppPaths, Processes, MacPermissions
+│   │   ├── audio/         AudioCapture, AudioSource, AudioPump, LoopbackHelper
+│   │   ├── ui/            ControlWindow, OptionsForm, LogPanel, theme/, widget/
+│   │   ├── net/           Channel, WebSocketChannel, TcpChannel, Transport
+│   │   ├── protocol/      Protocol, PinResolver, ControlClient, EShareClient
+│   │   ├── media/         Ffmpeg, WaylandCapture, VideoPump, AuSplitter, H264
+│   │   └── session/       CastRunner, CastSession, Phase
+│   └── native/            Platform helpers that Java starts as separate processes
+│       ├── macos/         SystemAudioCapture.swift
+│       └── windows/       vcats-loopback.cs (system audio)
 └── test/
-    └── java/main/
-        ├── config/
-        │   └── OptionsTest.java
-        ├── media/
-        │   ├── AuSplitterTest.java
-        │   ├── FfmpegTest.java
-        │   └── H264Test.java
-        └── protocol/
-            └── PinResolverTest.java
+    └── java/io/github/vcats/
+        ├── config/        OptionsTest
+        ├── media/         AuSplitterTest, FfmpegTest, H264Test
+        ├── net/           RtspFramerTest, WebSocketChannelTest
+        └── protocol/      EShareClientTest, PinResolverTest
 ```
 
 ### Assets
@@ -284,7 +252,7 @@ The logo and the test image are looked up in this order: the working directory, 
 | Windows | `gdigrab` | Restart the IDE or terminal after installing ffmpeg so the new `PATH` is picked up |
 | macOS | `avfoundation` | The terminal or IDE needs Screen Recording permission. vCats checks it, triggers the system prompt and opens the settings pane; after granting it, quit and reopen that app. The screen device index is detected automatically |
 | Linux (X11) | `x11grab` | Works out of the box |
-| Linux (Wayland) | desktop portal + PipeWire | The system "share your screen" dialog appears at each start. Needs `python3-gi`, `gir1.2-gstreamer-1.0`, `gstreamer1.0-pipewire` and `xdg-desktop-portal` with the backend for your desktop |
+| Linux (Wayland) | desktop portal + PipeWire, in Java (`java.lang.foreign`) | The system "share your screen" dialog appears at each start. Needs `libglib2.0-0`, `libgstreamer1.0-0`, `gstreamer1.0-pipewire`, `gstreamer1.0-plugins-base` and `xdg-desktop-portal` with the backend for your desktop |
 
 The captured screen is scaled to fit the chosen resolution without changing its aspect ratio, and padded with black bars when needed. Odd width or height values are rounded down to the next even number, as required by H.264.
 
@@ -294,11 +262,13 @@ Audio is optional and experimental. It is enabled with `--audio` (or the "Share 
 
 | System | Source used | Requirements |
 | --- | --- | --- |
-| Windows | ffmpeg `dshow`, on a loopback device found automatically (Stereo Mix, virtual cable and similar) | A recording device that captures system output. Enable "Stereo Mix" in Sound settings (Recording tab, show disabled devices) or install a virtual audio cable |
+| Windows | WASAPI loopback of the default output through a small helper (built automatically with the `csc.exe` that ships with Windows); falls back to an ffmpeg `dshow` loopback device | Nothing to install. Silence is sent while nothing is playing, so the stream keeps a steady clock |
 | macOS | ScreenCaptureKit helper `native/macos/vcats-audio` if present, otherwise ffmpeg `avfoundation` on a loopback device | macOS 13 or later and Screen Recording permission for the helper, or a loopback device such as BlackHole |
 | Linux | ffmpeg `pulse` on the monitor of the default output | PulseAudio or PipeWire with the PulseAudio compatibility layer |
 
 Use `--audio-device NAME` to choose a device explicitly: a DirectShow device name on Windows, an AVFoundation audio device index or name on macOS, a PulseAudio source name on Linux (for example `alsa_output.pci-0000_00_1f.3.analog-stereo.monitor`). On Windows the device names are listed by `ffmpeg -list_devices true -f dshow -i dummy`, on macOS by `ffmpeg -f avfoundation -list_devices true -i ""`, on Linux by `pactl list short sources`.
+
+If the board stays silent, the audio format it expects may differ from the default. Try `--audio-format` (or "Audio format" in the advanced settings): `pcm` (48 kHz stereo, default), `pcm44` (44.1 kHz), `mono` or `aac` (AAC-LC in ADTS frames). While sharing, the log prints every 5 seconds how many audio packets were sent and the peak level (`peak level 0%` means the capture itself is silent), and the first messages the board sends back on the audio and video channels, which usually show whether it accepted the stream.
 
 With `--test --audio` a quiet 440 Hz tone is sent instead of the system audio, to check the audio path without any capture device.
 
