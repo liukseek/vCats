@@ -126,7 +126,10 @@ public final class Main {
                 "  --audio-device <name>  Audio capture device; implies --audio"
         );
         System.out.println(
-                "  --audio-format <f>     pcm (default), pcm44, mono or aac; implies --audio"
+                "  --audio-format <f>     pcm24 (default), pcm, pcm44, mono or aac; implies --audio"
+        );
+        System.out.println(
+                "  --audio-cycle          Audio check: plays a test tone in every format, 12 s each"
         );
         System.out.println(
                 "  --help, -h             Show this message"

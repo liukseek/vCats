@@ -8,6 +8,9 @@ public final class Protocol {
 
     public static final int PORT_CONTROL = 57407;
     public static final int DEVICE_TYPE = 17;
+
+    /** Raw TCP port on the board that plays PCM audio (no header). */
+    public static final int PORT_AUDIO_RAW = 25123;
     public static final int T_CONFIG = 256, T_VIDEO = 257, T_AUDIO = 258;
 
     private static final String STREAM_PLIST_HEX =
